@@ -1,0 +1,972 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>StockFlow — Inventory & GST Billing</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Syne:wght@700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
+<style>
+:root{--bg:#0d0f14;--surface:#161b24;--surface2:#1e2535;--border:#2a3347;--accent:#00e5a0;--accent2:#ff6b35;--warn:#ffd166;--danger:#ff4757;--blue:#5eb8ff;--green:#34a853;--text:#e8edf5;--muted:#7a8ba0;--radius:10px}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;min-height:100vh;font-size:14px}
+
+/* TOPBAR */
+.topbar{display:flex;align-items:center;justify-content:space-between;padding:13px 24px;background:var(--surface);border-bottom:1px solid var(--border);position:sticky;top:0;z-index:100;flex-wrap:wrap;gap:8px}
+.logo{font-family:'Syne',sans-serif;font-size:20px;font-weight:800;letter-spacing:-.5px}
+.logo span{color:var(--accent)}
+.logo-badge{background:color-mix(in srgb,var(--green) 15%,transparent);border:1px solid color-mix(in srgb,var(--green) 35%,transparent);color:var(--green);font-size:10px;padding:2px 8px;border-radius:99px;font-weight:600;letter-spacing:.3px;margin-left:8px;vertical-align:middle}
+.tabs{display:flex;gap:3px;background:var(--bg);border-radius:8px;padding:3px;flex-wrap:wrap}
+.tab{padding:6px 14px;border-radius:6px;cursor:pointer;font-size:12px;font-weight:500;color:var(--muted);border:none;background:none;transition:all .2s;white-space:nowrap}
+.tab.active{background:var(--surface2);color:var(--text)}
+.tab:hover:not(.active){color:var(--text)}
+.topbar-right{display:flex;gap:8px;align-items:center}
+.btn{padding:7px 14px;border-radius:8px;border:none;cursor:pointer;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:500;transition:all .15s;display:inline-flex;align-items:center;gap:6px}
+.btn-primary{background:var(--accent);color:#000}
+.btn-primary:hover{filter:brightness(1.1);transform:translateY(-1px)}
+.btn-ghost{background:var(--surface2);color:var(--text);border:1px solid var(--border)}
+.btn-ghost:hover{background:var(--border)}
+.btn-green{background:var(--green);color:#fff}
+.btn-green:hover{filter:brightness(1.1)}
+.btn-sm{padding:5px 11px;font-size:12px}
+.btn:disabled{opacity:.4;cursor:not-allowed;transform:none!important}
+
+/* SYNC STATUS BAR */
+.sync-bar{background:var(--surface2);border-bottom:1px solid var(--border);padding:7px 26px;display:flex;align-items:center;gap:12px;font-size:12px;color:var(--muted)}
+.sync-dot{width:8px;height:8px;border-radius:50%;background:var(--muted);flex-shrink:0}
+.sync-dot.connected{background:var(--green);box-shadow:0 0 6px var(--green)}
+.sync-dot.syncing{background:var(--warn);animation:pulse 1s infinite}
+.sync-dot.error{background:var(--danger)}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+.sync-text{flex:1}
+.sync-actions{display:flex;gap:8px;margin-left:auto}
+
+/* MAIN & STATS */
+.main{padding:20px 24px;max-width:1440px;margin:0 auto}
+.stats{display:grid;grid-template-columns:repeat(5,1fr);gap:11px;margin-bottom:20px}
+.stat-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:15px 17px;position:relative;overflow:hidden}
+.stat-card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:var(--accent-color,var(--accent))}
+.stat-label{color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:.5px;margin-bottom:5px}
+.stat-value{font-family:'Syne',sans-serif;font-size:22px;font-weight:700}
+.stat-sub{color:var(--muted);font-size:11px;margin-top:3px}
+
+/* SETUP BANNER */
+.setup-banner{background:linear-gradient(135deg,#0d1a14,#0d1424);border:1px solid color-mix(in srgb,var(--green) 30%,transparent);border-radius:12px;padding:28px;margin-bottom:22px}
+.setup-banner h2{font-family:'Syne',sans-serif;font-size:20px;font-weight:700;margin-bottom:6px}
+.setup-banner h2 span{color:var(--green)}
+.setup-banner p{color:var(--muted);font-size:13px;margin-bottom:18px;max-width:600px}
+.setup-steps{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:20px}
+.setup-step{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:16px}
+.setup-step-num{width:28px;height:28px;border-radius:50%;background:var(--green);color:#fff;font-size:13px;font-weight:700;display:flex;align-items:center;justify-content:center;margin-bottom:10px}
+.setup-step-title{font-weight:600;font-size:13px;margin-bottom:5px}
+.setup-step-desc{font-size:12px;color:var(--muted);line-height:1.6}
+.setup-input-row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.setup-input{flex:1;min-width:280px;padding:10px 14px;background:var(--bg);border:1px solid var(--border);border-radius:8px;color:var(--text);font-family:'DM Mono',monospace;font-size:13px;outline:none;transition:border-color .2s}
+.setup-input:focus{border-color:var(--green)}
+
+/* TOOLBAR & TABLE */
+.toolbar{display:flex;gap:8px;margin-bottom:14px;align-items:center;flex-wrap:wrap}
+.search-wrap{position:relative;flex:1;max-width:290px}
+.search-wrap input{width:100%;padding:8px 13px 8px 34px;background:var(--surface);border:1px solid var(--border);border-radius:8px;color:var(--text);font-family:'DM Sans',sans-serif;font-size:13px;outline:none;transition:border-color .2s}
+.search-wrap input:focus{border-color:var(--accent)}
+.search-icon{position:absolute;left:11px;top:50%;transform:translateY(-50%);color:var(--muted);font-size:12px}
+select{padding:8px 11px;background:var(--surface);border:1px solid var(--border);border-radius:8px;color:var(--text);font-family:'DM Sans',sans-serif;font-size:13px;outline:none;cursor:pointer}
+.toolbar-right{margin-left:auto;display:flex;gap:7px}
+.table-wrap{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden}
+table{width:100%;border-collapse:collapse}
+thead th{padding:10px 13px;text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);font-weight:500;background:var(--surface2);border-bottom:1px solid var(--border);cursor:pointer;user-select:none}
+tbody tr{border-bottom:1px solid var(--border);transition:background .1s}
+tbody tr:hover{background:var(--surface2)}
+tbody td{padding:10px 13px;vertical-align:middle}
+.item-name{font-weight:500;font-size:13px}
+.item-sku{color:var(--muted);font-family:'DM Mono',monospace;font-size:11px}
+.item-barcode{color:#3a4d66;font-family:'DM Mono',monospace;font-size:10px;letter-spacing:1.5px}
+.badge{display:inline-block;padding:2px 9px;border-radius:99px;font-size:11px;font-weight:500}
+.badge-retail{background:#1a3a5e;color:#5eb8ff}
+.badge-warehouse{background:#2d2a14;color:#ffd166}
+.badge-mfg{background:#1a3a2a;color:#00e5a0}
+.stock-bar-wrap{display:flex;align-items:center;gap:7px}
+.stock-bar{flex:1;height:4px;background:var(--border);border-radius:99px;max-width:65px}
+.stock-fill{height:100%;border-radius:99px;transition:width .3s}
+.stock-num{font-family:'DM Mono',monospace;font-size:12px;min-width:30px;text-align:right}
+.actions{display:flex;gap:5px}
+.icon-btn{background:none;border:1px solid var(--border);border-radius:6px;color:var(--muted);cursor:pointer;padding:4px 7px;font-size:12px;transition:all .15s}
+.icon-btn:hover{border-color:var(--accent);color:var(--accent)}
+.icon-btn.del:hover{border-color:var(--danger);color:var(--danger)}
+.pager{display:flex;align-items:center;justify-content:space-between;padding:11px 13px;border-top:1px solid var(--border)}
+.pager-info{color:var(--muted);font-size:12px}
+
+/* MODALS */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:200;display:none;align-items:center;justify-content:center}
+.modal-overlay.open{display:flex}
+.modal{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:24px;width:560px;max-width:96vw;max-height:92vh;overflow-y:auto;animation:modalIn .2s ease}
+@keyframes modalIn{from{transform:scale(.96);opacity:0}to{transform:scale(1);opacity:1}}
+.modal-title{font-family:'Syne',sans-serif;font-size:17px;font-weight:700;margin-bottom:16px}
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:11px}
+.form-group{display:flex;flex-direction:column;gap:4px}
+.form-group.full{grid-column:1/-1}
+label{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.4px}
+.form-input{padding:8px 11px;background:var(--bg);border:1px solid var(--border);border-radius:8px;color:var(--text);font-family:'DM Sans',sans-serif;font-size:13px;outline:none}
+.form-input:focus{border-color:var(--accent)}
+.modal-actions{display:flex;gap:8px;justify-content:flex-end;margin-top:18px}
+
+/* SHEETS SETUP MODAL */
+.sheets-modal{width:680px}
+.code-block{background:#070a0e;border:1px solid var(--border);border-radius:8px;padding:14px;font-family:'DM Mono',monospace;font-size:12px;line-height:1.8;overflow-x:auto;color:#cce;margin:10px 0;max-height:300px;overflow-y:auto;}
+.code-block .kw{color:var(--accent)}.code-block .str{color:var(--warn)}.code-block .cm{color:#3d5c3d}
+.step-pill{display:inline-block;width:22px;height:22px;border-radius:50%;background:var(--green);color:#fff;font-size:11px;font-weight:700;text-align:center;line-height:22px;margin-right:7px;flex-shrink:0}
+.instruction-row{display:flex;gap:10px;align-items:flex-start;padding:10px 0;border-bottom:1px solid var(--border);font-size:13px}
+.instruction-row:last-child{border-bottom:none}
+.instruction-text{flex:1;color:var(--muted);line-height:1.6}
+.instruction-text strong{color:var(--text)}
+
+/* OTHER TABS */
+.section-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:13px}
+.section-title{font-family:'Syne',sans-serif;font-size:15px;font-weight:700}
+.cards-grid{display:grid;grid-template-columns:1fr 1fr;gap:13px;margin-bottom:18px}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:18px}
+.card-title{font-family:'Syne',sans-serif;font-size:13px;font-weight:700;margin-bottom:12px;color:var(--accent)}
+.card-row{display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--border)}
+.card-label{color:var(--muted);font-size:12px}
+.card-val{font-family:'DM Mono',monospace;font-size:13px;font-weight:500}
+.alert-item{display:flex;align-items:center;gap:11px;padding:9px 13px;border-radius:8px;margin-bottom:7px}
+.alert-warn{background:color-mix(in srgb,var(--warn) 8%,transparent);border:1px solid color-mix(in srgb,var(--warn) 25%,transparent)}
+.alert-crit{background:color-mix(in srgb,var(--danger) 8%,transparent);border:1px solid color-mix(in srgb,var(--danger) 25%,transparent)}
+.alert-text{flex:1;font-size:13px}
+.alert-action{font-size:12px;color:var(--accent);cursor:pointer;text-decoration:underline}
+.empty{text-align:center;padding:44px 20px;color:var(--muted)}
+.empty-icon{font-size:32px;margin-bottom:8px}
+
+/* LOADERS & TOASTS */
+.toast{position:fixed;bottom:22px;right:22px;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:12px 17px;font-size:13px;z-index:300;display:flex;align-items:center;gap:9px;transform:translateY(70px);opacity:0;transition:all .3s;pointer-events:none}
+.toast.show{transform:translateY(0);opacity:1}
+.loading-overlay{position:fixed;inset:0;background:rgba(13,15,20,.85);z-index:500;display:none;align-items:center;justify-content:center;flex-direction:column;gap:14px}
+.loading-overlay.show{display:flex}
+.spinner{width:40px;height:40px;border:3px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* SUPPLIERS */
+.sup-table{width:100%;border-collapse:collapse}
+.sup-table th,.sup-table td{padding:9px 13px;border-bottom:1px solid var(--border);font-size:13px}
+.sup-table th{color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:.4px;background:var(--surface2)}
+
+/* CHARTS & IMPORT */
+.chart-wrap{position:relative;height:190px;margin-top:8px}
+.import-area{border:2px dashed var(--border);border-radius:10px;padding:22px;text-align:center;cursor:pointer;transition:border-color .2s;margin-bottom:11px}
+.import-area:hover{border-color:var(--accent)}
+.import-area input{display:none}
+
+/* GST BILL (Condensed) */
+#tab-gst{font-family:'DM Sans',sans-serif}
+.gst-layout{display:grid;grid-template-columns:1fr 390px;gap:18px;align-items:start}
+.gst-builder{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:20px}
+.gst-preview-wrap{position:sticky;top:74px}
+.gst-preview{background:#fff;color:#111;border-radius:10px;overflow:hidden;font-family:'DM Sans',sans-serif;font-size:12px}
+.bill-header{background:#12192a;color:#fff;padding:20px 22px}
+.bill-company{font-size:17px;font-weight:700;margin-bottom:2px;color:#00e5a0;font-family:'Syne',sans-serif}
+.bill-meta{display:grid;grid-template-columns:1fr 1fr;gap:3px;font-size:11px;color:#bbb}
+.bill-section{padding:14px 20px;border-bottom:1px solid #eee}
+.bill-items-table{width:100%;border-collapse:collapse;font-size:11px}
+.bill-items-table th{background:#f5f7fa;padding:7px 9px;text-align:left;font-size:9px;text-transform:uppercase;color:#777;border-bottom:1px solid #e0e0e0}
+.bill-items-table td{padding:7px 9px;border-bottom:1px solid #f2f2f2;vertical-align:top}
+.bill-totals{padding:14px 20px;background:#f9fafb}
+.bill-total-row{display:flex;justify-content:space-between;font-size:11px;padding:2px 0;color:#555}
+.bill-total-row.grand{font-size:13px;font-weight:700;color:#111;border-top:2px solid #111;margin-top:5px;padding-top:7px}
+.gst-section{background:var(--surface2);border-radius:8px;padding:14px;margin-bottom:12px}
+.gst-section-title{font-size:11px;font-weight:600;color:var(--accent);text-transform:uppercase;margin-bottom:10px}
+.gst-form-row{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-bottom:9px}
+.gst-label{font-size:11px;color:var(--muted);margin-bottom:3px}
+.gst-item-row{display:grid;grid-template-columns:2fr 1fr 1fr 1fr 32px;gap:5px;margin-bottom:6px;align-items:end}
+.rm-btn{background:var(--danger);color:#fff;border:none;border-radius:6px;cursor:pointer;padding:8px 7px;font-size:12px}
+@media print{ .topbar,.main>div:not(#tab-gst),.gst-builder,.sync-bar{display:none!important} .gst-layout{display:block!important} .gst-preview-wrap{position:static} .gst-preview{border-radius:0} body{background:#fff} }
+.hidden{display:none!important}
+::-webkit-scrollbar{width:5px;height:5px}
+::-webkit-scrollbar-track{background:var(--bg)}
+::-webkit-scrollbar-thumb{background:var(--border);border-radius:99px}
+kbd{background:var(--surface2);border:1px solid var(--border);border-radius:4px;padding:1px 6px;font-family:'DM Mono',monospace;font-size:11px}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div style="display:flex;align-items:center;gap:6px">
+    <div class="logo">Stock<span>Flow</span><span class="logo-badge">📊 Google Sheets</span></div>
+  </div>
+  <div class="tabs">
+    <button class="tab active" onclick="switchTab('inventory',this)">📦 Inventory</button>
+    <button class="tab" onclick="switchTab('charts',this)">📊 Charts</button>
+    <button class="tab" onclick="switchTab('suppliers',this)">🏢 Suppliers</button>
+    <button class="tab" onclick="switchTab('mva',this)">🏭 MVA</button>
+    <button class="tab" onclick="switchTab('alerts',this)">⚠ Alerts <span id="alert-count" style="background:var(--danger);color:#fff;border-radius:99px;padding:1px 6px;font-size:10px;margin-left:2px;vertical-align:middle"></span></button>
+    <button class="tab" onclick="switchTab('gst',this)">🧾 GST Bill</button>
+  </div>
+  <div class="topbar-right">
+    <button class="btn btn-ghost btn-sm" onclick="showSheetsSetup()">⚙️ Sheet Setup</button>
+    <button class="btn btn-ghost btn-sm" onclick="openImportExport()">⬆ Import/Export</button>
+    <button class="btn btn-ghost btn-sm" id="sync-btn" onclick="syncAll()" disabled>🔄 Sync Now</button>
+    <button class="btn btn-primary btn-sm" onclick="openModal()">+ Add Item</button>
+  </div>
+</div>
+
+<div class="sync-bar">
+  <div class="sync-dot" id="sync-dot"></div>
+  <span class="sync-text" id="sync-text">Not connected — paste your Google Apps Script URL to connect</span>
+  <div class="sync-actions">
+    <span id="last-sync-text" style="color:var(--muted);font-size:11px"></span>
+  </div>
+</div>
+
+<div class="main">
+  <div class="setup-banner" id="setup-banner">
+    <h2>🔌 Connect to <span>Google Sheets</span></h2>
+    <p>Your inventory and supplier data will be stored securely in a Google Sheet — shareable with your team, editable directly in Sheets, and synced in real-time. Takes about 5 minutes to set up.</p>
+    <div class="setup-steps">
+      <div class="setup-step">
+        <div class="setup-step-num">1</div>
+        <div class="setup-step-title">Create Google Sheet</div>
+        <div class="setup-step-desc">Go to <strong>sheets.google.com</strong> → New blank sheet → Name it "StockFlow Database"</div>
+      </div>
+      <div class="setup-step">
+        <div class="setup-step-num">2</div>
+        <div class="setup-step-title">Add Apps Script</div>
+        <div class="setup-step-desc">In your Sheet: <strong>Extensions → Apps Script</strong> → paste the script → Deploy as Web App</div>
+      </div>
+      <div class="setup-step">
+        <div class="setup-step-num">3</div>
+        <div class="setup-step-title">Paste URL here</div>
+        <div class="setup-step-desc">Copy the deployment URL and paste it below — your data syncs automatically!</div>
+      </div>
+    </div>
+    <div class="setup-input-row">
+      <input class="setup-input" id="sheet-url-input" placeholder="https://script.google.com/macros/s/YOUR_SCRIPT_ID/exec" />
+      <button class="btn btn-green" onclick="connectSheet()">🔌 Connect Sheet</button>
+      <button class="btn btn-ghost" onclick="showSheetsSetup()">📋 View Setup Guide</button>
+    </div>
+  </div>
+
+  <div class="stats" id="stats-row"></div>
+
+  <div id="tab-inventory">
+    <div class="toolbar">
+      <div class="search-wrap">
+        <span class="search-icon">🔍</span>
+        <input type="text" id="search" placeholder="Search name, SKU, barcode..." oninput="renderTable()">
+      </div>
+      <select id="filter-cat" onchange="renderTable()">
+        <option value="">All Categories</option>
+        <option>Retail</option><option>Warehouse</option><option>Manufacturing</option>
+      </select>
+      <select id="filter-status" onchange="renderTable()">
+        <option value="">All Status</option>
+        <option value="ok">In Stock</option>
+        <option value="low">Low Stock</option>
+        <option value="out">Out of Stock</option>
+      </select>
+      <div class="toolbar-right">
+        <button class="btn btn-ghost btn-sm" onclick="sortBy('name')">Name ↕</button>
+        <button class="btn btn-ghost btn-sm" onclick="sortBy('stock')">Stock ↕</button>
+        <button class="btn btn-ghost btn-sm" onclick="sortBy('price')">Price ↕</button>
+      </div>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr>
+          <th>Item / SKU / Barcode</th><th>Category</th><th>Stock</th>
+          <th>Price (₹)</th><th>Reorder</th><th>Location</th><th>Supplier</th><th>Status</th><th>Actions</th>
+        </tr></thead>
+        <tbody id="tbody"></tbody>
+      </table>
+      <div id="empty-state" class="empty hidden"><div class="empty-icon">📦</div><div>No items found.</div></div>
+      <div class="pager" id="pager"></div>
+    </div>
+  </div>
+
+  <div id="tab-charts" class="hidden">
+    <div class="cards-grid" style="grid-template-columns:2fr 1fr">
+      <div class="card"><div class="card-title">📈 Stock Levels by Item</div><div class="chart-wrap"><canvas id="chart-stock"></canvas></div></div>
+      <div class="card"><div class="card-title">🥧 Value by Segment</div><div class="chart-wrap"><canvas id="chart-pie"></canvas></div></div>
+      <div class="card" style="grid-column:1/-1"><div class="card-title">💰 Top Items by Value</div><div class="chart-wrap" style="height:230px"><canvas id="chart-value"></canvas></div></div>
+    </div>
+  </div>
+
+  <div id="tab-suppliers" class="hidden">
+    <div class="section-head">
+      <div class="section-title">Supplier Tracker</div>
+      <button class="btn btn-primary btn-sm" onclick="openSupplierModal()">+ Add Supplier</button>
+    </div>
+    <div class="table-wrap">
+      <table class="sup-table">
+        <thead><tr><th>Supplier</th><th>Contact</th><th>Email</th><th>Phone</th><th>GSTIN</th><th>Items</th><th>Last Order</th><th>Actions</th></tr></thead>
+        <tbody id="sup-tbody"></tbody>
+      </table>
+      <div id="sup-empty" class="empty hidden"><div class="empty-icon">🏢</div><div>No suppliers yet. Add one!</div></div>
+    </div>
+  </div>
+
+  <div id="tab-mva" class="hidden">
+    <div class="section-head"><div class="section-title">Manufacturing Value Added Dashboard</div></div>
+    <div class="cards-grid" id="mva-content"></div>
+  </div>
+
+  <div id="tab-alerts" class="hidden">
+    <div class="card" style="border-color:color-mix(in srgb,var(--warn) 30%,transparent)">
+      <div class="card-title" style="color:var(--warn)">⚠ Stock Alerts</div>
+      <div id="alerts-content"></div>
+    </div>
+  </div>
+
+  <div id="tab-gst" class="hidden">
+    <div class="gst-layout">
+      <div class="gst-builder">
+        <div class="section-head" style="margin-bottom:14px">
+          <div class="section-title">🧾 GST Invoice Builder</div>
+          <div style="display:flex;gap:7px">
+            <button class="btn btn-ghost btn-sm" onclick="clearBill()">🗑 Clear</button>
+            <button class="btn btn-primary btn-sm" onclick="printBill()">🖨 Print / PDF</button>
+          </div>
+        </div>
+        <div class="gst-section">
+          <div class="gst-section-title">Seller / Business Details</div>
+          <div class="gst-form-row">
+            <div><div class="gst-label">Business Name</div><input class="form-input" id="g-sell-name" value="Your Business Name" oninput="updateBill()"></div>
+            <div><div class="gst-label">GSTIN</div><input class="form-input" id="g-sell-gstin" placeholder="22AAAAA0000A1Z5" oninput="updateBill()"></div>
+          </div>
+          <div class="gst-form-row one"><div><div class="gst-label">Address</div><input class="form-input" id="g-sell-addr" placeholder="Street, City, State — PIN" oninput="updateBill()"></div></div>
+          <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:9px">
+            <div><div class="gst-label">Phone</div><input class="form-input" id="g-sell-phone" placeholder="+91..." oninput="updateBill()"></div>
+            <div><div class="gst-label">Email</div><input class="form-input" id="g-sell-email" placeholder="you@email.com" oninput="updateBill()"></div>
+            <div><div class="gst-label">State</div><input class="form-input" id="g-sell-state" placeholder="State" oninput="updateBill()"></div>
+          </div>
+        </div>
+        <div class="gst-section">
+          <div class="gst-section-title">Buyer Details</div>
+          <div class="gst-form-row">
+            <div><div class="gst-label">Buyer Name / Company</div><input class="form-input" id="g-buy-name" placeholder="Customer / Company" oninput="updateBill()"></div>
+            <div><div class="gst-label">GSTIN (if registered)</div><input class="form-input" id="g-buy-gstin" placeholder="Optional" oninput="updateBill()"></div>
+          </div>
+          <div class="gst-form-row one"><div><div class="gst-label">Address</div><input class="form-input" id="g-buy-addr" placeholder="Buyer billing address" oninput="updateBill()"></div></div>
+          <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:9px">
+            <div><div class="gst-label">Phone</div><input class="form-input" id="g-buy-phone" placeholder="+91..." oninput="updateBill()"></div>
+            <div><div class="gst-label">State</div><input class="form-input" id="g-buy-state" placeholder="State" oninput="updateBill()"></div>
+            <div><div class="gst-label">Place of Supply</div><input class="form-input" id="g-pos" placeholder="State code e.g. 09" oninput="updateBill()"></div>
+          </div>
+        </div>
+        <div class="gst-section">
+          <div class="gst-section-title">Invoice Details</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:9px;margin-bottom:9px">
+            <div><div class="gst-label">Invoice No.</div><input class="form-input" id="g-inv-no" value="INV-2026-001" oninput="updateBill()"></div>
+            <div><div class="gst-label">Invoice Date</div><input class="form-input" type="date" id="g-inv-date" oninput="updateBill()"></div>
+            <div><div class="gst-label">Due Date</div><input class="form-input" type="date" id="g-due-date" oninput="updateBill()"></div>
+          </div>
+          <div class="gst-form-row">
+            <div><div class="gst-label">Transaction Type</div>
+              <select class="form-input" id="g-txn-type" onchange="updateBill()"><option value="intra">Intra-State (CGST + SGST)</option><option value="inter">Inter-State (IGST)</option></select>
+            </div>
+            <div><div class="gst-label">Payment Terms</div><input class="form-input" id="g-pay-terms" placeholder="e.g. Net 30 days" oninput="updateBill()"></div>
+          </div>
+        </div>
+        <div class="gst-section">
+          <div class="gst-section-title" style="display:flex;justify-content:space-between;align-items:center">
+            <span>Line Items</span><button class="btn btn-primary btn-sm" onclick="addBillItem()">+ Row</button>
+          </div>
+          <div style="display:grid;grid-template-columns:2fr 1fr 1fr 1fr 32px;gap:5px;margin-bottom:5px">
+            <div class="gst-label">Item / Description</div><div class="gst-label">Qty</div><div class="gst-label">Rate (₹)</div><div class="gst-label">GST %</div><div></div>
+          </div>
+          <div id="bill-items-container"></div>
+          <div style="margin-top:9px">
+            <div class="gst-label" style="margin-bottom:4px">Quick add from inventory:</div>
+            <select class="form-input" id="inv-quick-add" onchange="quickAddItem(this)" style="width:100%"><option value="">— Pick an inventory item —</option></select>
+          </div>
+        </div>
+        <div class="gst-section">
+          <div class="gst-section-title">Additional Info</div>
+          <div class="gst-form-row">
+            <div><div class="gst-label">Bank / UPI Details</div><input class="form-input" id="g-bank" placeholder="A/c or UPI ID" oninput="updateBill()"></div>
+            <div><div class="gst-label">Discount (₹)</div><input class="form-input" id="g-discount" type="number" value="0" min="0" oninput="updateBill()"></div>
+          </div>
+          <div class="gst-form-row one"><div>
+            <div class="gst-label">Notes / Terms</div>
+            <textarea class="form-input" id="g-notes" rows="2" placeholder="Thank you for your business!" oninput="updateBill()"></textarea>
+          </div></div>
+        </div>
+      </div>
+      <div class="gst-preview-wrap">
+        <div class="gst-preview" id="bill-preview"></div>
+        <div style="display:flex;gap:8px;margin-top:11px" class="bill-actions">
+          <button class="btn btn-primary" style="flex:1" onclick="printBill()">🖨 Print / Save PDF</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modal">
+  <div class="modal">
+    <div class="modal-title" id="modal-title">Add New Item</div>
+    <div class="form-grid">
+      <div class="form-group"><label>Item Name</label><input class="form-input" id="f-name" placeholder="Product name"></div>
+      <div class="form-group"><label>SKU</label><input class="form-input" id="f-sku" placeholder="SKU-001"></div>
+      <div class="form-group full">
+        <label>Barcode (EAN/UPC)</label>
+        <div style="display:flex;gap:7px">
+          <input class="form-input" id="f-barcode" placeholder="Scan or enter barcode" style="flex:1">
+          <button class="btn btn-ghost btn-sm" onclick="toggleScanner()" style="white-space:nowrap; border-color: var(--accent); color: var(--accent);">📷 Scan</button>
+          <button class="btn btn-ghost btn-sm" onclick="document.getElementById('f-barcode').value='890'+Math.floor(Math.random()*10000000000).toString().padStart(10,'0')" style="white-space:nowrap">🔀 Auto</button>
+        </div>
+        <div id="reader" style="width: 100%; margin-top: 10px; display: none; border-radius: 8px; overflow: hidden; border: 1px solid var(--border);"></div>
+      </div>
+      <div class="form-group"><label>Category</label>
+        <select class="form-input" id="f-cat"><option>Retail</option><option>Warehouse</option><option>Manufacturing</option></select>
+      </div>
+      <div class="form-group"><label>Location / Shelf</label><input class="form-input" id="f-loc" placeholder="A3-Shelf2"></div>
+      <div class="form-group"><label>Stock Qty</label><input class="form-input" id="f-stock" type="number" min="0" placeholder="0"></div>
+      <div class="form-group"><label>Max Capacity</label><input class="form-input" id="f-max" type="number" min="1" placeholder="100"></div>
+      <div class="form-group"><label>Reorder Point</label><input class="form-input" id="f-reorder" type="number" min="0" placeholder="10"></div>
+      <div class="form-group"><label>Unit Price (₹)</label><input class="form-input" id="f-price" type="number" step="0.01" placeholder="0.00"></div>
+      <div class="form-group"><label>HSN Code</label><input class="form-input" id="f-hsn" placeholder="e.g. 8481"></div>
+      <div class="form-group"><label>GST Rate</label>
+        <select class="form-input" id="f-gst"><option value="0">0%</option><option value="5">5%</option><option value="12">12%</option><option value="18" selected>18%</option><option value="28">28%</option></select>
+      </div>
+      <div class="form-group full"><label>Supplier</label><input class="form-input" id="f-supplier" placeholder="Supplier name"></div>
+      <div class="form-group full"><label>Notes</label><input class="form-input" id="f-notes" placeholder="Optional notes"></div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="saveItem()">Save Item</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="sup-modal">
+  <div class="modal">
+    <div class="modal-title" id="sup-modal-title">Add Supplier</div>
+    <div class="form-grid">
+      <div class="form-group"><label>Supplier Name</label><input class="form-input" id="s-name" placeholder="Company name"></div>
+      <div class="form-group"><label>Contact Person</label><input class="form-input" id="s-contact" placeholder="Name"></div>
+      <div class="form-group"><label>Email</label><input class="form-input" id="s-email" type="email" placeholder="email@supplier.com"></div>
+      <div class="form-group"><label>Phone</label><input class="form-input" id="s-phone" placeholder="+91 XXXXX XXXXX"></div>
+      <div class="form-group"><label>GSTIN</label><input class="form-input" id="s-gstin" placeholder="22AAAAA0000A1Z5"></div>
+      <div class="form-group"><label>Last Order Date</label><input class="form-input" id="s-lastorder" type="date"></div>
+      <div class="form-group full"><label>Address</label><input class="form-input" id="s-addr" placeholder="Full address"></div>
+      <div class="form-group full"><label>Notes (payment terms, lead time)</label><input class="form-input" id="s-notes" placeholder="e.g. Net 30, 7 day lead time"></div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeSupplierModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="saveSupplier()">Save Supplier</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="ie-modal">
+  <div class="modal" style="width:430px">
+    <div class="modal-title">Import / Export</div>
+    <div style="display:flex;gap:8px;margin-bottom:13px">
+      <button class="btn btn-ghost" style="flex:1" onclick="exportCSV()">⬇ CSV</button>
+      <button class="btn btn-ghost" style="flex:1" onclick="exportJSON()">⬇ JSON</button>
+    </div>
+    <div class="import-area" onclick="document.getElementById('csv-file').click()">
+      <div style="font-size:22px;margin-bottom:6px">📂</div>
+      <div style="color:var(--muted);font-size:12px">Click to import CSV<br><small>Columns: name, sku, barcode, category, stock, maxCapacity, reorderPoint, price, hsn, gstRate, location, supplier</small></div>
+      <input type="file" id="csv-file" accept=".csv" onchange="importCSV(event)">
+    </div>
+    <div class="modal-actions"><button class="btn btn-ghost" onclick="closeIE()">Close</button></div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="sheets-modal">
+  <div class="modal sheets-modal">
+    <div class="modal-title">📊 Google Sheets Setup Guide</div>
+    <div style="background:var(--surface2);border-radius:8px;padding:14px;margin-bottom:16px;font-size:13px;color:var(--muted)">
+      Follow these steps once — takes ~5 minutes. After setup, all your inventory data lives securely in a Google Sheet.
+    </div>
+    <div class="instruction-row"><span class="step-pill">1</span><div class="instruction-text"><strong>Create a new Google Sheet</strong><br>Go to <a href="https://sheets.google.com" target="_blank" style="color:var(--accent)">sheets.google.com</a> → click <strong>"Blank"</strong> → rename it to <kbd>StockFlow Database</kbd></div></div>
+    <div class="instruction-row"><span class="step-pill">2</span><div class="instruction-text"><strong>Open Apps Script editor</strong><br>In your Sheet, click <strong>Extensions → Apps Script</strong>. A new tab opens with a code editor.</div></div>
+    <div class="instruction-row"><span class="step-pill">3</span><div class="instruction-text"><strong>Paste this script</strong> — delete everything in the editor first, then paste:
+        <div class="code-block">
+<span class="cm">// StockFlow Google Sheets API (Full Sync)</span>
+<span class="kw">function</span> doGet(e) {
+  <span class="kw">if</span> (e.parameter.action === <span class="str">'ping'</span>) <span class="kw">return</span> ContentService.createTextOutput(JSON.stringify({ status: <span class="str">'ok'</span>, sheet: <span class="str">'StockFlow DB'</span> })).setMimeType(ContentService.MimeType.JSON);
+  
+  <span class="kw">const</span> ss = SpreadsheetApp.getActiveSpreadsheet();
+  <span class="kw">const</span> response = {
+    items: getSheetData(ss.getSheetByName(<span class="str">"Items"</span>)),
+    suppliers: getSheetData(ss.getSheetByName(<span class="str">"Suppliers"</span>))
+  };
+  <span class="kw">return</span> ContentService.createTextOutput(JSON.stringify(response)).setMimeType(ContentService.MimeType.JSON);
+}
+
+<span class="kw">function</span> doPost(e) {
+  <span class="kw">try</span> {
+    <span class="kw">const</span> ss = SpreadsheetApp.getActiveSpreadsheet();
+    <span class="kw">const</span> data = JSON.parse(e.postData.contents);
+    
+    <span class="kw">if</span> (data.items) writeSheetData(ss.getSheetByName(<span class="str">"Items"</span>), data.items, [<span class="str">"id"</span>,<span class="str">"name"</span>,<span class="str">"sku"</span>,<span class="str">"barcode"</span>,<span class="str">"category"</span>,<span class="str">"stock"</span>,<span class="str">"maxCapacity"</span>,<span class="str">"reorderPoint"</span>,<span class="str">"price"</span>,<span class="str">"hsn"</span>,<span class="str">"gstRate"</span>,<span class="str">"location"</span>,<span class="str">"supplier"</span>,<span class="str">"notes"</span>]);
+    <span class="kw">if</span> (data.suppliers) writeSheetData(ss.getSheetByName(<span class="str">"Suppliers"</span>), data.suppliers, [<span class="str">"id"</span>,<span class="str">"name"</span>,<span class="str">"contact"</span>,<span class="str">"email"</span>,<span class="str">"phone"</span>,<span class="str">"gstin"</span>,<span class="str">"addr"</span>,<span class="str">"lastOrder"</span>,<span class="str">"notes"</span>]);
+    
+    <span class="kw">return</span> ContentService.createTextOutput(JSON.stringify({ status: <span class="str">"success"</span> })).setMimeType(ContentService.MimeType.JSON);
+  } <span class="kw">catch</span>(err) {
+    <span class="kw">return</span> ContentService.createTextOutput(JSON.stringify({ status: <span class="str">"error"</span>, msg: err.toString() })).setMimeType(ContentService.MimeType.JSON);
+  }
+}
+
+<span class="kw">function</span> getSheetData(sheet) {
+  <span class="kw">if</span> (!sheet) <span class="kw">return</span> [];
+  <span class="kw">const</span> data = sheet.getDataRange().getValues();
+  <span class="kw">if</span> (data.length < 2) <span class="kw">return</span> []; 
+  <span class="kw">const</span> headers = data[0], result = [];
+  <span class="kw">for</span> (<span class="kw">let</span> i = 1; i < data.length; i++) {
+    <span class="kw">const</span> obj = {};
+    <span class="kw">for</span> (<span class="kw">let</span> j = 0; j < headers.length; j++) obj[headers[j]] = data[i][j];
+    result.push(obj);
+  }
+  <span class="kw">return</span> result;
+}
+
+<span class="kw">function</span> writeSheetData(sheet, data, headers) {
+  <span class="kw">if</span> (!sheet) {
+    <span class="kw">const</span> ss = SpreadsheetApp.getActiveSpreadsheet();
+    sheet = ss.insertSheet(headers.includes(<span class="str">"sku"</span>) ? <span class="str">"Items"</span> : <span class="str">"Suppliers"</span>);
+  }
+  sheet.clearContents();
+  sheet.appendRow(headers); 
+  <span class="kw">if</span> (data.length === 0) <span class="kw">return</span>;
+  <span class="kw">const</span> rows = data.map(item => headers.map(header => item[header] === undefined ? <span class="str">""</span> : item[header]));
+  sheet.getRange(2, 1, rows.length, headers.length).setValues(rows);
+}
+        </div>
+      </div>
+    </div>
+    <div class="instruction-row"><span class="step-pill">4</span><div class="instruction-text"><strong>Deploy as Web App</strong><br>Click <strong>Deploy → New deployment</strong> → Type: <kbd>Web app</kbd> → Execute as: <kbd>Me</kbd> → Who has access: <kbd>Anyone</kbd> → click <strong>Deploy</strong> → <strong>Authorize</strong> when prompted.</div></div>
+    <div class="instruction-row"><span class="step-pill">5</span><div class="instruction-text"><strong>Copy the Web App URL</strong><br>After deploying, copy the URL and paste it below.</div></div>
+    <div style="background:color-mix(in srgb,var(--warn) 8%,transparent);border:1px solid color-mix(in srgb,var(--warn) 25%,transparent);border-radius:8px;padding:13px;margin-top:14px;font-size:12px;color:var(--text)">⚠️ <strong>Important:</strong> When you re-deploy after changes, always click <strong>Deploy → Manage deployments → Edit (pencil) → New version</strong>.</div>
+    <div style="margin-top:16px">
+      <div style="font-size:12px;color:var(--muted);margin-bottom:8px">Paste your Web App URL here:</div>
+      <div style="display:flex;gap:8px">
+        <input class="form-input" id="sheet-url-modal" placeholder="https://script.google.com/macros/s/.../exec" style="flex:1;font-family:'DM Mono',monospace;font-size:12px">
+        <button class="btn btn-green" onclick="connectFromModal()">🔌 Connect</button>
+      </div>
+    </div>
+    <div class="modal-actions" style="margin-top:12px"><button class="btn btn-ghost" onclick="closeSheetsModal()">Close</button></div>
+  </div>
+</div>
+
+<div class="loading-overlay" id="loading"><div class="spinner"></div><div style="color:var(--muted);font-size:13px" id="loading-text">Syncing with Google Sheets...</div></div>
+<div class="toast" id="toast"><span id="toast-icon">✅</span><span id="toast-msg">Done!</span></div>
+
+<script>
+/* ============================================================
+   CONFIG & STATE
+   ============================================================ */
+let SCRIPT_URL = localStorage.getItem('sf_sheet_url') || '';
+let isConnected = false;
+let isSyncing = false;
+
+let items = JSON.parse(localStorage.getItem('sf_v3') || '[]');
+let suppliers = JSON.parse(localStorage.getItem('sf_sup_v3') || '[]');
+let nextId = items.length > 0 ? Math.max(...items.map(i=>Number(i.id)||0))+1 : 1;
+let nextSupId = suppliers.length > 0 ? Math.max(...suppliers.map(s=>Number(s.id)||0))+1 : 1;
+
+let editingId=null, editingSupId=null;
+let sortField=null, sortDir=1;
+const PAGE=10; let page=0;
+let charts={};
+let billRowId=0;
+
+/* ============================================================
+   BARCODE SCANNER (MOBILE CAMERA)
+   ============================================================ */
+let html5QrcodeScanner = null;
+
+function toggleScanner() {
+  const readerDiv = document.getElementById('reader');
+  
+  // If scanner is currently open, close it
+  if (readerDiv.style.display === 'block') {
+    if (html5QrcodeScanner) {
+      html5QrcodeScanner.clear();
+      html5QrcodeScanner = null;
+    }
+    readerDiv.style.display = 'none';
+    return;
+  }
+
+  // Open scanner
+  readerDiv.style.display = 'block';
+  
+  // Initialize the scanner
+  html5QrcodeScanner = new Html5QrcodeScanner(
+    "reader",
+    { fps: 10, qrbox: { width: 250, height: 100 }, supportedScanTypes: [Html5QrcodeScanType.SCAN_TYPE_CAMERA] },
+    /* verbose= */ false
+  );
+  
+  html5QrcodeScanner.render(onScanSuccess, onScanFailure);
+}
+
+function onScanSuccess(decodedText, decodedResult) {
+  // Populate the input with the scanned barcode
+  document.getElementById('f-barcode').value = decodedText;
+  
+  // Play a little beep sound (optional but nice)
+  let beep = new Audio('data:audio/mp3;base64,//NExAAAAANIAAAAAExBTUUzLjEwMKqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq/9jDAAAABzOEAAAAAABzhAAAB//OAAAA//OAAAA//OAAAA//OAAAA//OAAAA//OAAAA');
+  beep.play().catch(e=>console.log(e)); // Catch error if browser blocks autoplay
+
+  // Stop scanning and hide the viewfinder
+  if (html5QrcodeScanner) {
+    html5QrcodeScanner.clear();
+    html5QrcodeScanner = null;
+  }
+  document.getElementById('reader').style.display = 'none';
+  
+  toast('📷', 'Barcode Scanned!');
+}
+
+function onScanFailure(error) {
+  // We ignore failures because it continuously fires while trying to focus/read
+}
+
+/* ============================================================
+   GOOGLE SHEETS API LOGIC
+   ============================================================ */
+async function pingSheet() {
+  if (!SCRIPT_URL) return false;
+  try {
+    setSyncState('syncing', 'Connecting to Google Sheets...');
+    const res = await fetch(`${SCRIPT_URL}?action=ping&t=${Date.now()}`);
+    const data = await res.json();
+    if (data.status === 'ok') {
+      isConnected = true;
+      setSyncState('connected', `Connected to sheet: "${data.sheet}"`);
+      document.getElementById('sync-btn').disabled = false;
+      document.getElementById('setup-banner').classList.add('hidden');
+      return true;
+    }
+  } catch (e) {
+    setSyncState('error', 'Connection failed — check your URL and try again');
+  }
+  return false;
+}
+
+async function loadFromSheet() {
+  if (!SCRIPT_URL) return;
+  showLoading('Loading from Google Sheets...');
+  try {
+    const res = await fetch(`${SCRIPT_URL}?t=${Date.now()}`);
+    const data = await res.json();
+    if (data.items) items = data.items.map(i => ({...i, id: Number(i.id), stock: Number(i.stock), price: Number(i.price), maxCapacity: Number(i.maxCapacity), reorderPoint: Number(i.reorderPoint), gstRate: Number(i.gstRate)}));
+    if (data.suppliers) suppliers = data.suppliers.map(s => ({...s, id: Number(s.id)}));
+    
+    nextId = items.length > 0 ? Math.max(...items.map(i=>i.id)) + 1 : 1;
+    nextSupId = suppliers.length > 0 ? Math.max(...suppliers.map(s=>s.id)) + 1 : 1;
+    
+    localStorage.setItem('sf_v3', JSON.stringify(items));
+    localStorage.setItem('sf_sup_v3', JSON.stringify(suppliers));
+    updateLastSync();
+    render();
+    toast('✅', `Loaded successfully`);
+  } catch (e) {
+    toast('❌', 'Failed to load from Sheets');
+  } finally {
+    hideLoading();
+  }
+}
+
+async function syncToSheet() {
+  localStorage.setItem('sf_v3', JSON.stringify(items));
+  localStorage.setItem('sf_sup_v3', JSON.stringify(suppliers));
+  
+  if (!SCRIPT_URL || !isConnected) return; // Works locally if not connected
+
+  try {
+    setSyncState('syncing', 'Syncing to cloud...');
+    await fetch(SCRIPT_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' }, // Prevent CORS preflight
+      body: JSON.stringify({ items: items, suppliers: suppliers })
+    });
+    updateLastSync();
+    setSyncState('connected', `Connected`);
+  } catch(e) {
+    setSyncState('error', 'Sync failed! Saved locally.');
+    console.error("Sync error:", e);
+  }
+}
+
+async function syncAll() {
+  if (isSyncing) return;
+  isSyncing = true;
+  await syncToSheet(); // Push local changes just in case
+  await loadFromSheet(); // Pull fresh
+  isSyncing = false;
+}
+
+async function connectSheet() {
+  const url = document.getElementById('sheet-url-input').value.trim();
+  if (!url.includes('script.google.com')) { toast('⚠️', 'Invalid Google Apps Script URL'); return; }
+  SCRIPT_URL = url;
+  localStorage.setItem('sf_sheet_url', url);
+  if (await pingSheet()) await loadFromSheet();
+}
+
+async function connectFromModal() {
+  const url = document.getElementById('sheet-url-modal').value.trim();
+  if (!url.includes('script.google.com')) { toast('⚠️', 'Invalid Google Apps Script URL'); return; }
+  SCRIPT_URL = url;
+  localStorage.setItem('sf_sheet_url', url);
+  closeSheetsModal();
+  if (await pingSheet()) await loadFromSheet();
+}
+
+function setSyncState(state, text) {
+  document.getElementById('sync-dot').className = 'sync-dot ' + state;
+  document.getElementById('sync-text').textContent = text;
+}
+
+function updateLastSync() {
+  const now = new Date();
+  document.getElementById('last-sync-text').textContent = `Last sync: ${now.toLocaleTimeString()}`;
+  localStorage.setItem('sf_last_sync', now.toISOString());
+}
+
+function showLoading(t) { document.getElementById('loading-text').textContent=t; document.getElementById('loading').classList.add('show'); }
+function hideLoading() { document.getElementById('loading').classList.remove('show'); }
+function toast(icon,msg){const el=document.getElementById('toast');document.getElementById('toast-icon').textContent=icon;document.getElementById('toast-msg').textContent=msg;el.classList.add('show');setTimeout(()=>el.classList.remove('show'),3000)}
+
+/* ============================================================
+   RENDER CORE
+   ============================================================ */
+function getStatus(i){if(i.stock===0)return'out';if(i.stock<=i.reorderPoint)return'low';return'ok'}
+function statusLabel(s){return{ok:'🟢 In Stock',low:'🟡 Low',out:'🔴 Out'}[s]}
+function stockColor(p){if(p>.5)return'var(--accent)';if(p>.2)return'var(--warn)';return'var(--danger)'}
+
+function render() { renderStats(); renderTable(); renderAlerts(); renderMVA(); updateAlertCount(); renderSuppliers(); populateQuickAdd(); }
+
+function renderStats() {
+  const out=items.filter(i=>getStatus(i)==='out').length, low=items.filter(i=>getStatus(i)==='low').length;
+  const val=items.reduce((s,i)=>s+i.stock*i.price,0);
+  document.getElementById('stats-row').innerHTML=[
+    {label:'Total SKUs',value:items.length,sub:'unique products',color:'var(--accent)'},
+    {label:'Inventory Value',value:'₹'+val.toLocaleString('en-IN',{maximumFractionDigits:0}),sub:'all locations',color:'var(--blue)'},
+    {label:'Low Stock',value:low,sub:'need reorder',color:'var(--warn)'},
+    {label:'Out of Stock',value:out,sub:'critical',color:'var(--danger)'},
+    {label:'Suppliers',value:suppliers.length,sub:'registered',color:'#c084fc'}
+  ].map(r=>`<div class="stat-card" style="--accent-color:${r.color}"><div class="stat-label">${r.label}</div><div class="stat-value" style="color:${r.color}">${r.value}</div><div class="stat-sub">${r.sub}</div></div>`).join('');
+}
+
+function getFiltered() {
+  const q=document.getElementById('search').value.toLowerCase(), cat=document.getElementById('filter-cat').value, st=document.getElementById('filter-status').value;
+  let res=items.filter(i=>{
+    if(q&&!i.name.toLowerCase().includes(q)&&!i.sku.toLowerCase().includes(q)&&!(i.barcode||'').includes(q))return false;
+    if(cat&&i.category!==cat)return false;
+    if(st&&getStatus(i)!==st)return false;
+    return true;
+  });
+  if(sortField)res.sort((a,b)=>{let av=a[sortField],bv=b[sortField];return typeof av==='string'?av.localeCompare(bv)*sortDir:(av-bv)*sortDir});
+  return res;
+}
+
+function renderTable() {
+  const filtered=getFiltered(), total=filtered.length, paged=filtered.slice(page*PAGE,(page+1)*PAGE);
+  const tbody=document.getElementById('tbody'), empty=document.getElementById('empty-state');
+  if(!paged.length){tbody.innerHTML='';empty.classList.remove('hidden')}
+  else{
+    empty.classList.add('hidden');
+    tbody.innerHTML=paged.map(item=>{
+      const pct=item.maxCapacity?item.stock/item.maxCapacity:0, catBadge={Retail:'badge-retail',Warehouse:'badge-warehouse',Manufacturing:'badge-mfg'}[item.category]||'', bc=item.barcode||'';
+      return`<tr>
+        <td><div class="item-name">${item.name}</div><div class="item-sku">${item.sku}</div>${bc?`<div class="item-barcode">▐${bc}▌</div>`:''}</td>
+        <td><span class="badge ${catBadge}">${item.category}</span></td>
+        <td><div class="stock-bar-wrap"><div class="stock-bar"><div class="stock-fill" style="width:${Math.min(100,pct*100)}%;background:${stockColor(pct)}"></div></div><span class="stock-num" style="color:${stockColor(pct)}">${item.stock}</span></div></td>
+        <td>₹${item.price.toFixed(2)}</td><td style="color:var(--muted);font-family:'DM Mono',monospace;font-size:12px">${item.reorderPoint}</td><td style="color:var(--muted);font-size:12px">${item.location||'—'}</td><td style="color:var(--muted);font-size:12px">${item.supplier||'—'}</td><td>${statusLabel(getStatus(item))}</td>
+        <td><div class="actions"><button class="icon-btn" onclick="openModal(${item.id})" title="Edit">✏️</button><button class="icon-btn" onclick="addToBill(${item.id})" title="Add to GST Bill">🧾</button><button class="icon-btn del" onclick="deleteItem(${item.id})" title="Delete">🗑</button></div></td>
+      </tr>`;
+    }).join('');
+  }
+  const tp=Math.ceil(total/PAGE);
+  document.getElementById('pager').innerHTML=`<span class="pager-info">Showing ${Math.min(page*PAGE+1,total)}–${Math.min((page+1)*PAGE,total)} of ${total}</span><div style="display:flex;gap:6px"><button class="btn btn-ghost btn-sm" onclick="goPage(-1)" ${page===0?'disabled':''}>← Prev</button><button class="btn btn-ghost btn-sm" onclick="goPage(1)" ${page>=tp-1?'disabled':''}>Next →</button></div>`;
+}
+function goPage(d){page=Math.max(0,page+d);renderTable()}
+function sortBy(f){if(sortField===f)sortDir*=-1;else{sortField=f;sortDir=1}renderTable()}
+
+/* ============================================================
+   CRUD OPERATIONS (ITEMS & SUPPLIERS)
+   ============================================================ */
+function openModal(id){
+  editingId=id||null;
+  document.getElementById('modal-title').textContent=id?'Edit Item':'Add New Item';
+  if(id){
+    const item=items.find(i=>i.id===id);
+    document.getElementById('f-name').value=item.name; document.getElementById('f-sku').value=item.sku; document.getElementById('f-barcode').value=item.barcode||''; document.getElementById('f-cat').value=item.category; document.getElementById('f-loc').value=item.location; document.getElementById('f-stock').value=item.stock; document.getElementById('f-max').value=item.maxCapacity; document.getElementById('f-reorder').value=item.reorderPoint; document.getElementById('f-price').value=item.price; document.getElementById('f-hsn').value=item.hsn||''; document.getElementById('f-gst').value=item.gstRate||18; document.getElementById('f-supplier').value=item.supplier||''; document.getElementById('f-notes').value=item.notes||'';
+  } else {
+    ['f-name','f-sku','f-barcode','f-loc','f-supplier','f-notes','f-hsn'].forEach(id=>document.getElementById(id).value=''); ['f-stock','f-max','f-reorder','f-price'].forEach(id=>document.getElementById(id).value=''); document.getElementById('f-gst').value=18;
+  }
+  document.getElementById('modal').classList.add('open');
+}
+
+// Override closeModal to ensure the camera shuts off when the modal is closed
+function closeModal(){
+  if (html5QrcodeScanner) {
+    html5QrcodeScanner.clear();
+    html5QrcodeScanner = null;
+    document.getElementById('reader').style.display = 'none';
+  }
+  document.getElementById('modal').classList.remove('open');
+}
+
+async function saveItem(){
+  const name=document.getElementById('f-name').value.trim(), sku=document.getElementById('f-sku').value.trim();
+  if(!name||!sku){toast('⚠️','Name and SKU required');return}
+  const data={name,sku,barcode:document.getElementById('f-barcode').value,category:document.getElementById('f-cat').value,location:document.getElementById('f-loc').value,stock:+document.getElementById('f-stock').value||0,maxCapacity:+document.getElementById('f-max').value||100,reorderPoint:+document.getElementById('f-reorder').value||10,price:+document.getElementById('f-price').value||0,hsn:document.getElementById('f-hsn').value,gstRate:+document.getElementById('f-gst').value||18,supplier:document.getElementById('f-supplier').value,notes:document.getElementById('f-notes').value};
+  if(editingId){const idx=items.findIndex(i=>i.id===editingId);items[idx]={...items[idx],...data};toast('✅','Item updated!')}
+  else{items.push({id:nextId++,...data});toast('✅','Item added!')}
+  closeModal(); render();
+  await syncToSheet(); // Auto-sync
+}
+async function deleteItem(id){
+  if(!confirm('Delete this item?'))return;
+  items=items.filter(i=>i.id!==id); render(); toast('🗑️','Deleted.');
+  await syncToSheet();
+}
+
+/* SUPPLIERS */
+function renderSuppliers(){
+  const tbody=document.getElementById('sup-tbody'),empty=document.getElementById('sup-empty');
+  if(!suppliers.length){tbody.innerHTML='';empty.classList.remove('hidden');return}
+  empty.classList.add('hidden');
+  tbody.innerHTML=suppliers.map(s=>{
+    const cnt=items.filter(i=>i.supplier===s.name).length;
+    return`<tr><td><strong>${s.name}</strong></td><td>${s.contact||'—'}</td><td style="color:var(--blue)">${s.email||'—'}</td><td style="color:var(--muted);font-size:12px">${s.phone||'—'}</td><td style="font-family:'DM Mono',monospace;font-size:11px">${s.gstin||'—'}</td><td><span class="badge badge-mfg">${cnt} items</span></td><td style="color:var(--muted);font-size:12px">${s.lastOrder||'—'}</td><td><div class="actions"><button class="icon-btn" onclick="openSupplierModal(${s.id})">✏️</button><button class="icon-btn del" onclick="deleteSupplier(${s.id})">🗑</button></div></td></tr>`;
+  }).join('');
+}
+function openSupplierModal(id){
+  editingSupId=id||null; document.getElementById('sup-modal-title').textContent=id?'Edit Supplier':'Add Supplier';
+  const s=id?suppliers.find(x=>x.id===id):{};
+  ['s-name','s-contact','s-email','s-phone','s-gstin','s-addr','s-notes','s-lastorder'].forEach(k=>document.getElementById(k).value=s[k.split('-')[1]]||'');
+  document.getElementById('sup-modal').classList.add('open');
+}
+function closeSupplierModal(){document.getElementById('sup-modal').classList.remove('open')}
+async function saveSupplier(){
+  const name=document.getElementById('s-name').value.trim();
+  if(!name){toast('⚠️','Name required');return}
+  const data={name,contact:document.getElementById('s-contact').value,email:document.getElementById('s-email').value,phone:document.getElementById('s-phone').value,gstin:document.getElementById('s-gstin').value,addr:document.getElementById('s-addr').value,notes:document.getElementById('s-notes').value,lastOrder:document.getElementById('s-lastorder').value};
+  if(editingSupId){const idx=suppliers.findIndex(s=>s.id===editingSupId);suppliers[idx]={...suppliers[idx],...data}}
+  else{suppliers.push({id:nextSupId++,...data})}
+  closeSupplierModal(); render(); toast('✅', 'Supplier Saved!');
+  await syncToSheet();
+}
+async function deleteSupplier(id){if(!confirm('Delete supplier?'))return;suppliers=suppliers.filter(s=>s.id!==id);render();toast('🗑️','Deleted');await syncToSheet();}
+
+/* ============================================================
+   TABS & MODALS
+   ============================================================ */
+function switchTab(tab,btn){
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active')); btn.classList.add('active');
+  ['inventory','charts','suppliers','mva','alerts','gst'].forEach(t=>document.getElementById('tab-'+t).classList.toggle('hidden',t!==tab));
+  if(tab==='charts')setTimeout(renderCharts,60); if(tab==='gst'){populateQuickAdd();updateBill()}
+}
+function showSheetsSetup(){document.getElementById('sheet-url-modal').value=SCRIPT_URL; document.getElementById('sheets-modal').classList.add('open');}
+function closeSheetsModal(){document.getElementById('sheets-modal').classList.remove('open');}
+function openImportExport(){document.getElementById('ie-modal').classList.add('open')}
+function closeIE(){document.getElementById('ie-modal').classList.remove('open')}
+
+/* ============================================================
+   IMPORT/EXPORT
+   ============================================================ */
+function exportCSV(){const cols=['name','sku','barcode','category','stock','maxCapacity','reorderPoint','price','hsn','gstRate','location','supplier','notes'];const csv=[cols.join(','),...items.map(i=>cols.map(c=>`"${i[c]||''}"`).join(','))].join('\n');const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'}));a.download='inventory.csv';a.click();toast('⬇️','Exported!');}
+function exportJSON(){const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([JSON.stringify(items,null,2)],{type:'application/json'}));a.download='inventory.json';a.click();toast('⬇️','Exported!')}
+async function importCSV(e){
+  const file=e.target.files[0];if(!file)return;
+  const r=new FileReader();
+  r.onload=async evt=>{
+    const lines=evt.target.result.split('\n').filter(Boolean), headers=lines[0].split(',').map(h=>h.trim().replace(/"/g,'')); let added=0;
+    for(let i=1;i<lines.length;i++){
+      const vals=lines[i].split(',').map(v=>v.trim().replace(/"/g,'')), obj={}; headers.forEach((h,idx)=>obj[h]=vals[idx]||'');
+      if(obj.name&&obj.sku){items.push({id:nextId++,name:obj.name,sku:obj.sku,barcode:obj.barcode||'',category:obj.category||'Retail',stock:+obj.stock||0,maxCapacity:+obj.maxCapacity||100,reorderPoint:+obj.reorderPoint||10,price:+obj.price||0,hsn:obj.hsn||'',gstRate:+obj.gstRate||18,location:obj.location||'',supplier:obj.supplier||'',notes:obj.notes||''});added++}
+    }
+    render(); closeIE(); toast('✅',`Imported ${added} items!`); await syncToSheet();
+  };r.readAsText(file);
+}
+
+/* ============================================================
+   MVA & ALERTS & CHARTS
+   ============================================================ */
+function renderMVA(){
+  const retail=items.filter(i=>i.category==='Retail'),wh=items.filter(i=>i.category==='Warehouse'),mfg=items.filter(i=>i.category==='Manufacturing');
+  const vOf=a=>a.reduce((s,i)=>s+i.stock*i.price,0), mvaVal=vOf(mfg), rawMat=vOf(wh), mvaIdx=rawMat>0?((mvaVal/rawMat)*100).toFixed(1)+'%':'N/A', fmt=v=>'₹'+v.toLocaleString('en-IN',{maximumFractionDigits:0});
+  document.getElementById('mva-content').innerHTML=`<div class="card"><div class="card-title">📦 Inventory by Segment</div>${[['Retail',retail],['Warehouse',wh],['Manufacturing',mfg]].map(([n,a])=>`<div class="card-row"><span class="card-label">${n} <small style="color:var(--muted)">(${a.length} SKUs)</small></span><span class="card-val" style="color:var(--accent)">${fmt(vOf(a))}</span></div>`).join('')}</div><div class="card"><div class="card-title">🏭 MVA Metrics</div>${[['Raw Material Value (WH)',fmt(rawMat)],['Finished Goods (Mfg)',fmt(mvaVal)],['MVA Index (Mfg÷Raw×100)',mvaIdx],['Avg Unit Price — Mfg',mfg.length?'₹'+(mfg.reduce((s,i)=>s+i.price,0)/mfg.length).toFixed(2):'N/A']].map(([l,v])=>`<div class="card-row"><span class="card-label">${l}</span><span class="card-val">${v}</span></div>`).join('')}</div><div class="card" style="grid-column:1/-1"><div class="card-title">📊 Stock Health by Segment</div><div style="display:grid;grid-template-columns:repeat(3,1fr);gap:18px;margin-top:6px">${[['Retail',retail,'#5eb8ff'],['Warehouse',wh,'var(--warn)'],['Manufacturing',mfg,'var(--accent)']].map(([n,a,c])=>{const ok=a.filter(i=>getStatus(i)==='ok').length,low=a.filter(i=>getStatus(i)==='low').length,out=a.filter(i=>getStatus(i)==='out').length;return`<div><div style="color:${c};font-weight:600;margin-bottom:7px">${n}</div>${[['In Stock',ok,'var(--accent)'],['Low Stock',low,'var(--warn)'],['Out of Stock',out,'var(--danger)']].map(([l,v,cc])=>`<div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--border)"><span style="color:var(--muted);font-size:12px">${l}</span><span style="color:${cc};font-family:'DM Mono',monospace">${v}</span></div>`).join('')}</div>`;}).join('')}</div></div>`;
+}
+function renderAlerts(){
+  const al=items.filter(i=>getStatus(i)!=='ok').sort((a,b)=>getStatus(a)==='out'?-1:1), el=document.getElementById('alerts-content');
+  if(!al.length){el.innerHTML='<div style="color:var(--muted);font-size:13px">🎉 All items well stocked!</div>';return}
+  el.innerHTML=al.map(i=>{const c=getStatus(i)==='out';return`<div class="alert-item ${c?'alert-crit':'alert-warn'}"><span>${c?'🔴':'🟡'}</span><div class="alert-text"><strong>${i.name}</strong> (${i.sku}) — ${c?'OUT OF STOCK':'Low: '+i.stock+' left (reorder pt: '+i.reorderPoint+')'}</div><span class="alert-action" onclick="openModal(${i.id})">Restock →</span></div>`}).join('');
+}
+function updateAlertCount(){const n=items.filter(i=>getStatus(i)!=='ok').length, el=document.getElementById('alert-count'); el.textContent=n>0?n:''; el.style.display=n>0?'':'none'}
+function renderCharts(){
+  if(document.getElementById('tab-charts').classList.contains('hidden'))return;
+  const catColors={Retail:'#5eb8ff',Warehouse:'#ffd166',Manufacturing:'#00e5a0'};
+  if(charts['chart-stock'])charts['chart-stock'].destroy(); charts['chart-stock']=new Chart(document.getElementById('chart-stock'),{type:'bar',data:{labels:items.map(i=>i.name.length>12?i.name.substring(0,12)+'…':i.name),datasets:[{label:'Stock',data:items.map(i=>i.stock),backgroundColor:items.map(i=>(catColors[i.category]||'#888')+'33'),borderColor:items.map(i=>catColors[i.category]||'#888'),borderWidth:1.5,borderRadius:4}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{ticks:{color:'#7a8ba0',font:{size:10}},grid:{color:'#2a334720'}},y:{ticks:{color:'#7a8ba0',font:{size:10}},grid:{color:'#2a334740'}}}}});
+  if(charts['chart-pie'])charts['chart-pie'].destroy(); const cats=['Retail','Warehouse','Manufacturing']; charts['chart-pie']=new Chart(document.getElementById('chart-pie'),{type:'doughnut',data:{labels:cats,datasets:[{data:cats.map(c=>items.filter(i=>i.category===c).reduce((s,i)=>s+i.stock*i.price,0)),backgroundColor:cats.map(c=>catColors[c]+'99'),borderColor:cats.map(c=>catColors[c]),borderWidth:2}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{color:'#e8edf5',font:{size:11}}}}}});
+  if(charts['chart-value'])charts['chart-value'].destroy(); const top10=[...items].sort((a,b)=>(b.stock*b.price)-(a.stock*a.price)).slice(0,10); charts['chart-value']=new Chart(document.getElementById('chart-value'),{type:'bar',data:{labels:top10.map(i=>i.name.length>18?i.name.substring(0,18)+'…':i.name),datasets:[{label:'Value (₹)',data:top10.map(i=>+(i.stock*i.price).toFixed(0)),backgroundColor:'#00e5a033',borderColor:'#00e5a0',borderWidth:1.5,borderRadius:5}]},options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{ticks:{color:'#7a8ba0',font:{size:10}},grid:{color:'#2a334740'}},y:{ticks:{color:'#e8edf5',font:{size:11}},grid:{color:'#2a334720'}}}}});
+}
+
+/* ============================================================
+   GST BILL BUILDER
+   ============================================================ */
+function addBillItem(desc='',qty=1,rate=0,gst=18){
+  const id=++billRowId, div=document.createElement('div'); div.className='gst-item-row'; div.id='brow-'+id;
+  div.innerHTML=`<input class="form-input" placeholder="Item / description" value="${desc}" oninput="updateBill()"><input class="form-input" type="number" min="1" value="${qty}" oninput="updateBill()"><input class="form-input" type="number" min="0" step="0.01" value="${rate}" oninput="updateBill()"><select class="form-input" onchange="updateBill()"><option value="0" ${gst==0?'selected':''}>0%</option><option value="5" ${gst==5?'selected':''}>5%</option><option value="12" ${gst==12?'selected':''}>12%</option><option value="18" ${gst==18?'selected':''}>18%</option><option value="28" ${gst==28?'selected':''}>28%</option></select><button class="rm-btn" onclick="this.parentElement.remove();updateBill()">✕</button>`;
+  document.getElementById('bill-items-container').appendChild(div); updateBill();
+}
+function getBillRows(){const rows=[]; document.querySelectorAll('#bill-items-container .gst-item-row').forEach(row=>{const inputs=row.querySelectorAll('input,select'), desc=inputs[0].value.trim(), qty=+inputs[1].value||0, rate=+inputs[2].value||0, gst=+inputs[3].value||0; rows.push({desc,qty,rate,gst,taxable:qty*rate});}); return rows.filter(r=>r.desc||r.rate>0);}
+function populateQuickAdd(){const sel=document.getElementById('inv-quick-add'); if(!sel)return; const cur=sel.value; sel.innerHTML='<option value="">— Pick an inventory item —</option>'+items.map(i=>`<option value="${i.id}">${i.name} (₹${i.price} | GST ${i.gstRate}%)</option>`).join(''); sel.value=cur;}
+function quickAddItem(sel){const id=+sel.value; if(!id)return; const item=items.find(i=>i.id===id); if(item)addBillItem(`${item.name} [${item.sku}]`,1,item.price,item.gstRate||18); sel.value='';}
+function addToBill(itemId){const item=items.find(i=>i.id===itemId); if(!item)return; switchTab('gst',document.querySelectorAll('.tab')[5]); setTimeout(()=>addBillItem(`${item.name} [${item.sku}]`,1,item.price,item.gstRate||18),120); toast('🧾','Added to GST Bill!');}
+function clearBill(){if(!confirm('Clear all items?'))return; document.getElementById('bill-items-container').innerHTML=''; billRowId=0; addBillItem(); toast('🗑️','Cleared.');}
+
+function updateBill(){
+  const v=id=>document.getElementById(id).value, sellName=v('g-sell-name')||'Your Business', isInter=v('g-txn-type')==='inter', rows=getBillRows(); let subtotal=0, totalGst=0;
+  const rowsHtml=rows.map((r,idx)=>{
+    const tax=r.taxable*r.gst/100; subtotal+=r.taxable; totalGst+=tax; const half=(tax/2).toFixed(2);
+    const gstCols=isInter?`<td align="right">₹${tax.toFixed(2)}</td>`:`<td align="right">₹${half}</td><td align="right">₹${half}</td>`;
+    return`<tr><td>${idx+1}</td><td>${r.desc||'—'}</td><td align="right">${r.qty}</td><td align="right">₹${r.rate.toFixed(2)}</td><td align="right">₹${r.taxable.toFixed(2)}</td><td align="right">${r.gst}%</td>${gstCols}<td align="right"><strong>₹${(r.taxable+tax).toFixed(2)}</strong></td></tr>`;
+  }).join('');
+  const discount=+v('g-discount')||0, grandTotal=subtotal+totalGst-discount, gstHeader=isInter?'<th align="right">IGST</th>':'<th align="right">CGST</th><th align="right">SGST</th>', gstTotals=isInter?`<div class="bill-total-row"><span>IGST</span><span>₹${totalGst.toFixed(2)}</span></div>`:`<div class="bill-total-row"><span>CGST (50%)</span><span>₹${(totalGst/2).toFixed(2)}</span></div><div class="bill-total-row"><span>SGST (50%)</span><span>₹${(totalGst/2).toFixed(2)}</span></div>`;
+
+  document.getElementById('bill-preview').innerHTML=`
+    <div class="bill-header"><div class="bill-company">${sellName}</div><div class="bill-meta"><div style="grid-column:1/-1;margin-top:4px;font-size:16px;font-weight:800;color:#00e5a0;letter-spacing:1px">TAX INVOICE</div><div>Invoice No: <strong style="color:#fff">${v('g-inv-no')}</strong></div><div>Date: <strong style="color:#fff">${v('g-inv-date')}</strong></div></div></div>
+    <div class="bill-section" style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+      <div><div style="font-size:9px;color:#999;text-transform:uppercase;margin-bottom:3px">From</div><strong>${sellName}</strong><br><span style="font-size:11px;color:#555">${v('g-sell-addr')}<br>GSTIN: ${v('g-sell-gstin')||'—'}</span></div>
+      <div><div style="font-size:9px;color:#999;text-transform:uppercase;margin-bottom:3px">Bill To</div><strong>${v('g-buy-name')||'Customer'}</strong><br><span style="font-size:11px;color:#555">${v('g-buy-addr')||'—'}<br>GSTIN: ${v('g-buy-gstin')||'—'}</span></div>
+    </div>
+    <div class="bill-section" style="padding:0"><table class="bill-items-table"><thead><tr><th>#</th><th>Description</th><th align="right">Qty</th><th align="right">Rate</th><th align="right">Taxable</th><th align="right">GST%</th>${gstHeader}<th align="right">Total</th></tr></thead><tbody>${rowsHtml||'<tr><td colspan="9" style="text-align:center;padding:18px">Add items</td></tr>'}</tbody></table></div>
+    <div class="bill-totals"><div class="bill-total-row"><span>Subtotal (Taxable)</span><span>₹${subtotal.toFixed(2)}</span></div>${discount>0?`<div class="bill-total-row"><span>Discount</span><span style="color:#ff4757">-₹${discount.toFixed(2)}</span></div>`:''}${gstTotals}<div class="bill-total-row grand"><span>GRAND TOTAL</span><span>₹${grandTotal.toFixed(2)}</span></div></div>
+  `;
+}
+function printBill(){window.print()}
+
+/* ============================================================
+   START APP
+   ============================================================ */
+async function init() {
+  const lastSync = localStorage.getItem('sf_last_sync');
+  if (lastSync) document.getElementById('last-sync-text').textContent = `Last sync: ${new Date(lastSync).toLocaleTimeString()}`;
+
+  document.getElementById('g-inv-date').value = new Date().toISOString().split('T')[0];
+  const fd = new Date(); fd.setDate(fd.getDate()+30);
+  document.getElementById('g-due-date').value = fd.toISOString().split('T')[0];
+  
+  render(); // Local render first
+
+  if (SCRIPT_URL) {
+    document.getElementById('sheet-url-input').value = SCRIPT_URL;
+    if (await pingSheet()) await loadFromSheet();
+  } else {
+    setSyncState('', 'Not connected — paste your Google Apps Script URL to connect');
+    document.getElementById('setup-banner').classList.remove('hidden');
+  }
+}
+init();
+</script>
+</body>
+</html>
