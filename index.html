@@ -286,6 +286,26 @@ kbd{background:var(--surface2);border:1px solid var(--border);border-radius:4px;
 .var-chip-color{width:10px;height:10px;border-radius:50%;display:inline-block;margin-right:5px;border:1px solid rgba(255,255,255,.25);vertical-align:middle}
 .var-chip-stock{font-family:'DM Mono',monospace;font-size:11px;color:var(--muted);margin-top:2px}
 .var-chip-status{position:absolute;top:5px;right:6px;width:6px;height:6px;border-radius:50%}
+
+/* ===== VARIANT NOTIFICATIONS ===== */
+.var-notif-banner{border-radius:10px;padding:10px 14px;margin-bottom:8px;display:flex;align-items:center;gap:10px;font-size:12px;animation:slideIn .25s ease}
+@keyframes slideIn{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:translateY(0)}}
+.var-notif-out{background:color-mix(in srgb,var(--danger) 10%,transparent);border:1px solid color-mix(in srgb,var(--danger) 35%,transparent)}
+.var-notif-low{background:color-mix(in srgb,var(--warn) 10%,transparent);border:1px solid color-mix(in srgb,var(--warn) 35%,transparent)}
+.var-notif-icon{font-size:15px;flex-shrink:0}
+.var-notif-text{flex:1;line-height:1.5}
+.var-notif-restock{font-size:11px;color:var(--accent);cursor:pointer;text-decoration:underline;flex-shrink:0}
+.var-reorder-badge{display:inline-flex;align-items:center;gap:4px;font-size:10px;font-family:'DM Mono',monospace;background:var(--surface);border:1px solid var(--border);border-radius:5px;padding:2px 7px;margin-top:3px}
+.var-chip-reorder-input{width:100%;background:var(--bg);border:1px solid var(--border);border-radius:5px;color:var(--text);font-family:'DM Mono',monospace;font-size:11px;text-align:center;padding:3px 5px;margin-top:5px;outline:none}
+.var-chip-reorder-input:focus{border-color:var(--accent)}
+.var-chip-reorder-label{font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:.3px;margin-top:4px}
+.var-notif-panel{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:16px;margin-bottom:16px}
+.var-notif-panel-title{font-family:'Syne',sans-serif;font-size:13px;font-weight:700;margin-bottom:12px;display:flex;align-items:center;gap:8px}
+.notif-bell{position:relative;cursor:pointer;display:inline-flex}
+.notif-bell-count{position:absolute;top:-5px;right:-7px;background:var(--danger);color:#fff;font-size:9px;font-weight:700;border-radius:99px;padding:1px 5px;min-width:16px;text-align:center;line-height:14px;animation:pulse 1.5s infinite}
+.var-chip-bar{height:3px;border-radius:99px;background:var(--border);margin-top:5px;overflow:hidden}
+.var-chip-bar-fill{height:100%;border-radius:99px;transition:width .4s}
+.var-alert-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0;animation:pulse 1.5s infinite}
 .var-summary{display:flex;gap:14px;flex-wrap:wrap;margin-top:10px;padding-top:10px;border-top:1px solid var(--border)}
 .var-summary-item{font-size:11px;color:var(--muted)}
 .var-summary-item span{color:var(--text);font-weight:600;font-family:'DM Mono',monospace}
@@ -553,11 +573,12 @@ kbd{background:var(--surface2);border:1px solid var(--border);border-radius:4px;
           <label style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;display:block;margin-bottom:5px">Variant Label</label>
           <input class="var-attr-input" id="var-custom-label" placeholder="e.g. Flavour, Pack Size..." style="width:100%">
         </div>
-        <div style="display:grid;grid-template-columns:1.2fr 0.8fr 1fr 70px 36px;gap:7px;margin-bottom:6px">
+        <div style="display:grid;grid-template-columns:1.2fr 0.8fr 0.9fr 60px 60px 36px;gap:7px;margin-bottom:6px">
           <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.3px">Value</div>
           <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.3px">SKU Suffix</div>
           <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.3px">Barcode</div>
           <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.3px">Stock</div>
+          <div style="font-size:10px;color:var(--warn);text-transform:uppercase;letter-spacing:.3px" title="Alert when stock drops below this">Min ⚠</div>
           <div></div>
         </div>
         <div id="var-attrs-container"></div>
@@ -611,9 +632,18 @@ kbd{background:var(--surface2);border:1px solid var(--border);border-radius:4px;
   </div>
 
   <div id="tab-alerts" class="hidden">
-    <div class="card" style="border-color:color-mix(in srgb,var(--warn) 30%,transparent)">
-      <div class="card-title" style="color:var(--warn)">⚠ Stock Alerts</div>
-      <div id="alerts-content"></div>
+    <div style="display:flex;flex-direction:column;gap:14px">
+      <div class="card" style="border-color:color-mix(in srgb,var(--warn) 30%,transparent)">
+        <div class="card-title" style="color:var(--warn)">⚠ Parent Stock Alerts</div>
+        <div id="alerts-content"></div>
+      </div>
+      <div class="card" style="border-color:color-mix(in srgb,var(--danger) 30%,transparent)">
+        <div class="card-title" style="color:var(--accent);display:flex;align-items:center;justify-content:space-between">
+          <span>🎨 Variant / Child Stock Alerts</span>
+          <span id="var-alert-badge" style="background:var(--danger);color:#fff;border-radius:99px;padding:2px 10px;font-size:11px;font-weight:700;display:none">0</span>
+        </div>
+        <div id="var-alerts-content"><div style="color:var(--muted);font-size:13px">🎉 All variants well stocked!</div></div>
+      </div>
     </div>
   </div>
 
@@ -1404,12 +1434,6 @@ function renderMVA(){
   const vOf=a=>a.reduce((s,i)=>s+i.stock*i.price,0), mvaVal=vOf(mfg), rawMat=vOf(wh), mvaIdx=rawMat>0?((mvaVal/rawMat)*100).toFixed(1)+'%':'N/A', fmt=v=>'₹'+v.toLocaleString('en-IN',{maximumFractionDigits:0});
   document.getElementById('mva-content').innerHTML=`<div class="card"><div class="card-title">📦 Inventory by Segment</div>${[['Retail',retail],['Warehouse',wh],['Manufacturing',mfg]].map(([n,a])=>`<div class="card-row"><span class="card-label">${n} <small style="color:var(--muted)">(${a.length} SKUs)</small></span><span class="card-val" style="color:var(--accent)">${fmt(vOf(a))}</span></div>`).join('')}</div><div class="card"><div class="card-title">🏭 MVA Metrics</div>${[['Raw Material Value (WH)',fmt(rawMat)],['Finished Goods (Mfg)',fmt(mvaVal)],['MVA Index (Mfg÷Raw×100)',mvaIdx],['Avg Unit Price — Mfg',mfg.length?'₹'+(mfg.reduce((s,i)=>s+i.price,0)/mfg.length).toFixed(2):'N/A']].map(([l,v])=>`<div class="card-row"><span class="card-label">${l}</span><span class="card-val">${v}</span></div>`).join('')}</div><div class="card" style="grid-column:1/-1"><div class="card-title">📊 Stock Health by Segment</div><div style="display:grid;grid-template-columns:repeat(3,1fr);gap:18px;margin-top:6px">${[['Retail',retail,'#5eb8ff'],['Warehouse',wh,'var(--warn)'],['Manufacturing',mfg,'var(--accent)']].map(([n,a,c])=>{const ok=a.filter(i=>getStatus(i)==='ok').length,low=a.filter(i=>getStatus(i)==='low').length,out=a.filter(i=>getStatus(i)==='out').length;return`<div><div style="color:${c};font-weight:600;margin-bottom:7px">${n}</div>${[['In Stock',ok,'var(--accent)'],['Low Stock',low,'var(--warn)'],['Out of Stock',out,'var(--danger)']].map(([l,v,cc])=>`<div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--border)"><span style="color:var(--muted);font-size:12px">${l}</span><span style="color:${cc};font-family:'DM Mono',monospace">${v}</span></div>`).join('')}</div>`;}).join('')}</div></div>`;
 }
-function renderAlerts(){
-  const al=items.filter(i=>getStatus(i)!=='ok').sort((a,b)=>getStatus(a)==='out'?-1:1), el=document.getElementById('alerts-content');
-  if(!al.length){el.innerHTML='<div style="color:var(--muted);font-size:13px">🎉 All items well stocked!</div>';return}
-  el.innerHTML=al.map(i=>{const c=getStatus(i)==='out';return`<div class="alert-item ${c?'alert-crit':'alert-warn'}"><span>${c?'🔴':'🟡'}</span><div class="alert-text"><strong>${i.name}</strong> (${i.sku}) — ${c?'OUT OF STOCK':'Low: '+i.stock+' left (reorder pt: '+i.reorderPoint+')'}</div><span class="alert-action" onclick="openModal(${i.id})">Restock →</span></div>`}).join('');
-}
-function updateAlertCount(){const n=items.filter(i=>getStatus(i)!=='ok').length, el=document.getElementById('alert-count'); el.textContent=n>0?n:''; el.style.display=n>0?'':'none'}
 function renderCharts(){
   if(document.getElementById('tab-charts').classList.contains('hidden'))return;
   const catColors={Retail:'#5eb8ff',Warehouse:'#ffd166',Manufacturing:'#00e5a0'};
@@ -1594,18 +1618,18 @@ function populateVarProductSelect(){
   sel.value = cur;
 }
 
-function addVarAttrRow(val='', skuSuffix='', stock=0, color='#00e5a0', barcode=''){
+function addVarAttrRow(val='', skuSuffix='', stock=0, color='#00e5a0', barcode='', reorderPt=5){
   const container = document.getElementById('var-attrs-container');
   const row = document.createElement('div');
   row.className='var-attr-row';
   const isColor = currentVarType==='color';
-  // grid: value | skuSuffix | barcode | stock | colorpicker? | del
-  row.style.gridTemplateColumns = isColor ? '1.2fr 0.8fr 1fr 70px 36px 36px' : '1.2fr 0.8fr 1fr 70px 36px';
+  row.style.gridTemplateColumns = isColor ? '1.2fr 0.8fr 0.9fr 60px 60px 36px 36px' : '1.2fr 0.8fr 0.9fr 60px 60px 36px';
   row.innerHTML=`
     <input class="var-attr-input" placeholder="${currentVarType==='size'?'e.g. S, M, L':currentVarType==='color'?'e.g. Red, Blue':'Value'}" value="${val}">
     <input class="var-attr-input" placeholder="-RED" value="${skuSuffix}">
     <input class="var-attr-input" placeholder="Barcode / EAN" value="${barcode}">
-    <input class="var-attr-input" type="number" min="0" placeholder="Stock" value="${stock}" style="text-align:center">
+    <input class="var-attr-input" type="number" min="0" placeholder="Stock" value="${stock}" style="text-align:center" title="Current stock">
+    <input class="var-attr-input" type="number" min="0" placeholder="Min" value="${reorderPt}" style="text-align:center;border-color:var(--warn)" title="Low stock alert below this quantity">
     ${isColor?`<input type="color" class="color-dot-input" value="${color}" title="Pick color">`:''}
     <button class="var-del-btn" onclick="this.closest('.var-attr-row').remove()">✕</button>
   `;
@@ -1627,8 +1651,9 @@ function saveVariants(){
     const sfx       = inputs[1].value.trim();
     const bc        = inputs[2].value.trim();
     const stk       = parseInt(inputs[3].value)||0;
-    const col       = inputs[4]&&inputs[4].type==='color' ? inputs[4].value : '#00e5a0';
-    if(val) attrs.push({value:val, skuSuffix:sfx, barcode:bc, stock:stk, color:col});
+    const rpt       = parseInt(inputs[4].value)||5;
+    const col       = inputs[5]&&inputs[5].type==='color' ? inputs[5].value : '#00e5a0';
+    if(val) attrs.push({value:val, skuSuffix:sfx, barcode:bc, stock:stk, reorderPoint:rpt, color:col});
   });
   if(!attrs.length){ toast('⚠️','Enter at least one variant value'); return; }
 
@@ -1680,7 +1705,7 @@ function editVariant(pid){
     document.getElementById('var-custom-label').value=v.label;
   }
   document.getElementById('var-attrs-container').innerHTML='';
-  v.attrs.forEach(a=>addVarAttrRow(a.value, a.skuSuffix||'', a.stock, a.color||'#00e5a0', a.barcode||''));
+  v.attrs.forEach(a=>addVarAttrRow(a.value, a.skuSuffix||'', a.stock, a.color||'#00e5a0', a.barcode||'', a.reorderPoint||5));
 }
 
 // Inline +/- stock update directly on variant card
@@ -1722,6 +1747,73 @@ function variantAdjustStock(pid, attrIdx, delta){
   toast(delta>0?'✅':'📤', `${attr.value}: ${oldStock} → ${newStock}`);
 }
 
+function getVarStatus(attr){
+  if(attr.stock===0) return 'out';
+  const rpt = attr.reorderPoint ?? 5;
+  if(attr.stock <= rpt) return 'low';
+  return 'ok';
+}
+
+function getAllVariantAlerts(){
+  const alerts=[];
+  for(const [pid, vData] of Object.entries(variants)){
+    const item = items.find(i=>i.id==pid);
+    if(!item) continue;
+    vData.attrs.forEach((attr,idx)=>{
+      const st = getVarStatus(attr);
+      if(st !== 'ok') alerts.push({pid, idx, item, attr, status:st});
+    });
+  }
+  return alerts;
+}
+
+function renderAlerts(){
+  // Parent alerts
+  const al=items.filter(i=>getStatus(i)!=='ok').sort((a,b)=>getStatus(a)==='out'?-1:1);
+  const el=document.getElementById('alerts-content');
+  if(!al.length){el.innerHTML='<div style="color:var(--muted);font-size:13px">🎉 All parent items well stocked!</div>';}
+  else{el.innerHTML=al.map(i=>{const c=getStatus(i)==='out';return`<div class="alert-item ${c?'alert-crit':'alert-warn'}"><span>${c?'🔴':'🟡'}</span><div class="alert-text"><strong>${i.name}</strong> (${i.sku}) — ${c?'OUT OF STOCK':'Low: '+i.stock+' left (reorder pt: '+i.reorderPoint+')'}</div><span class="alert-action" onclick="openModal(${i.id})">Restock →</span></div>`}).join('');}
+
+  // Variant alerts
+  const varAlerts = getAllVariantAlerts();
+  const vel = document.getElementById('var-alerts-content');
+  const badge = document.getElementById('var-alert-badge');
+  if(vel){
+    if(!varAlerts.length){
+      vel.innerHTML='<div style="color:var(--muted);font-size:13px">🎉 All variants well stocked!</div>';
+      if(badge){ badge.style.display='none'; }
+    } else {
+      if(badge){ badge.textContent=varAlerts.length; badge.style.display='inline'; }
+      vel.innerHTML = varAlerts.map(({pid,idx,item,attr,status})=>{
+        const isOut = status==='out';
+        const rpt = attr.reorderPoint ?? 5;
+        return `<div class="alert-item ${isOut?'alert-crit':'alert-warn'}" style="margin-bottom:8px">
+          <span>${isOut?'🔴':'🟡'}</span>
+          <div class="alert-text">
+            <strong>${item.name}</strong> — <span style="color:var(--accent)">${attr.value}</span>
+            ${attr.skuSuffix?`<span style="font-family:'DM Mono',monospace;font-size:10px;color:var(--muted)"> (${item.sku}${attr.skuSuffix})</span>`:''}
+            <br>
+            ${isOut
+              ? `<span style="color:var(--danger);font-weight:600">OUT OF STOCK</span>`
+              : `<span style="color:var(--warn)">Low: <strong>${attr.stock}</strong> left — alert set at ≤${rpt}</span>`
+            }
+          </div>
+          <span class="alert-action" onclick="editVariant(${pid});switchTab('variants',document.querySelectorAll('.tab')[4])">Restock →</span>
+        </div>`;
+      }).join('');
+    }
+  }
+}
+
+function updateAlertCount(){
+  const parentN = items.filter(i=>getStatus(i)!=='ok').length;
+  const varN    = getAllVariantAlerts().length;
+  const total   = parentN + varN;
+  const el = document.getElementById('alert-count');
+  el.textContent = total > 0 ? total : '';
+  el.style.display = total > 0 ? '' : 'none';
+}
+
 function renderVarCards(){
   const container=document.getElementById('var-cards-container');
   if(!container) return;
@@ -1730,36 +1822,95 @@ function renderVarCards(){
     container.innerHTML='<div style="color:var(--muted);font-size:13px;text-align:center;padding:40px 20px">No variants yet.<br>Select a product and add variants.</div>';
     return;
   }
-  container.innerHTML=keys.map(pid=>{
+
+  // Collect all variant alerts for the notification panel at top
+  const allAlerts = getAllVariantAlerts();
+
+  let html = '';
+
+  // Global variant notification panel
+  if(allAlerts.length){
+    html += `<div class="var-notif-panel">
+      <div class="var-notif-panel-title">
+        🔔 Variant Stock Alerts
+        <span style="background:var(--danger);color:#fff;border-radius:99px;padding:1px 9px;font-size:11px">${allAlerts.length}</span>
+      </div>`;
+    allAlerts.forEach(({pid,idx,item,attr,status})=>{
+      const isOut = status==='out';
+      const rpt   = attr.reorderPoint ?? 5;
+      html += `<div class="var-notif-banner ${isOut?'var-notif-out':'var-notif-low'}">
+        <div class="var-notif-icon">${isOut?'🔴':'🟡'}</div>
+        <div class="var-notif-text">
+          <strong>${item.name}</strong> › <span style="font-weight:600;color:${isOut?'var(--danger)':'var(--warn)'}">${attr.value}</span>
+          ${attr.skuSuffix?`<span style="font-family:'DM Mono',monospace;font-size:10px;color:var(--muted)"> ${item.sku}${attr.skuSuffix}</span>`:''}
+          &nbsp;—&nbsp;
+          ${isOut
+            ? `<span style="color:var(--danger);font-weight:700">OUT OF STOCK</span>`
+            : `<span style="color:var(--warn)">Only <strong>${attr.stock}</strong> left (alert below ≤${rpt})</span>`}
+        </div>
+        <span class="var-notif-restock" onclick="variantAdjustStock(${pid},${idx},${rpt*2||10})">+Restock</span>
+      </div>`;
+    });
+    html += `</div>`;
+  } else {
+    html += `<div style="background:color-mix(in srgb,var(--accent) 8%,transparent);border:1px solid color-mix(in srgb,var(--accent) 25%,transparent);border-radius:10px;padding:11px 16px;margin-bottom:14px;font-size:12px;color:var(--accent)">✅ All variant stocks are healthy</div>`;
+  }
+
+  // Variant product cards
+  html += keys.map(pid=>{
     const item=items.find(i=>i.id==pid);
     if(!item) return '';
     const v=variants[pid];
     const totalStock=v.attrs.reduce((s,a)=>s+a.stock,0);
     const totalVal=totalStock*item.price;
+    const productAlerts = allAlerts.filter(a=>a.pid==pid);
+
     const chips=v.attrs.map((a,idx)=>{
-      const statusColor=a.stock===0?'var(--danger)':a.stock<=item.reorderPoint?'var(--warn)':'var(--accent)';
-      const bgColor=v.type==='color'?a.color+'18':'var(--bg)';
-      const borderColor=v.type==='color'?a.color:statusColor;
-      return`<div class="var-chip" style="background:${bgColor};border-color:${borderColor}">
-        ${v.type==='color'?`<span class="var-chip-color" style="background:${a.color}"></span>`:''}
-        <strong style="font-size:12px">${a.value}</strong>
+      const rpt        = a.reorderPoint ?? 5;
+      const st         = getVarStatus(a);
+      const statusColor= st==='out'?'var(--danger)':st==='low'?'var(--warn)':'var(--accent)';
+      const bgColor    = v.type==='color'?a.color+'18':'var(--bg)';
+      const borderColor= st!=='ok' ? statusColor : (v.type==='color'?a.color:'var(--border)');
+      const barPct     = Math.min(100, a.stock / Math.max(a.stock, rpt*3) * 100);
+      const statusEmoji= st==='out'?'🔴':st==='low'?'🟡':'🟢';
+      return`<div class="var-chip" style="background:${bgColor};border-color:${borderColor};${st!=='ok'?'box-shadow:0 0 8px '+statusColor+'44':''}">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:3px">
+          <div style="display:flex;align-items:center;gap:5px">
+            ${v.type==='color'?`<span class="var-chip-color" style="background:${a.color}"></span>`:''}
+            <strong style="font-size:12px">${a.value}</strong>
+          </div>
+          <span style="font-size:11px">${statusEmoji}</span>
+        </div>
         ${a.skuSuffix?`<div style="font-size:10px;color:var(--muted);font-family:'DM Mono',monospace">${item.sku}${a.skuSuffix}</div>`:''}
         ${a.barcode?`<div style="font-size:10px;color:var(--muted);font-family:'DM Mono',monospace">▐${a.barcode}▌</div>`:''}
-        <div class="var-chip-stock" style="color:${statusColor};font-size:13px;font-weight:700;margin:4px 0">${a.stock} units</div>
-        <div style="display:flex;gap:4px;margin-top:4px">
-          <button onclick="variantAdjustStock(${pid},${idx},-1)" style="flex:1;background:color-mix(in srgb,var(--danger) 15%,transparent);border:1px solid var(--danger);color:var(--danger);border-radius:5px;cursor:pointer;font-size:13px;padding:2px 0">−</button>
-          <button onclick="variantAdjustStock(${pid},${idx},1)" style="flex:1;background:color-mix(in srgb,var(--green) 15%,transparent);border:1px solid var(--green);color:var(--green);border-radius:5px;cursor:pointer;font-size:13px;padding:2px 0">+</button>
+        <div class="var-chip-bar"><div class="var-chip-bar-fill" style="width:${barPct}%;background:${statusColor}"></div></div>
+        <div style="color:${statusColor};font-size:14px;font-weight:700;margin:5px 0">${a.stock} <span style="font-size:10px;font-weight:400;color:var(--muted)">units</span></div>
+        <div class="var-reorder-badge" style="${st!=='ok'?'border-color:'+statusColor+';color:'+statusColor:''}">
+          <span>⚠ Min:</span> ${rpt}
+        </div>
+        <div style="display:flex;gap:4px;margin-top:6px">
+          <button onclick="variantAdjustStock(${pid},${idx},-1)" style="flex:1;background:color-mix(in srgb,var(--danger) 15%,transparent);border:1px solid var(--danger);color:var(--danger);border-radius:5px;cursor:pointer;font-size:14px;padding:3px 0;font-weight:700">−</button>
+          <button onclick="variantQuickSet(${pid},${idx})" style="flex:0;background:var(--surface2);border:1px solid var(--border);color:var(--muted);border-radius:5px;cursor:pointer;font-size:10px;padding:3px 6px" title="Set exact quantity">✏</button>
+          <button onclick="variantAdjustStock(${pid},${idx},1)" style="flex:1;background:color-mix(in srgb,var(--green) 15%,transparent);border:1px solid var(--green);color:var(--green);border-radius:5px;cursor:pointer;font-size:14px;padding:3px 0;font-weight:700">+</button>
         </div>
         <div class="var-chip-status" style="background:${statusColor}"></div>
       </div>`;
     }).join('');
-    return`<div class="var-card">
+
+    const parentStatusColor = getStatus(item)==='out'?'var(--danger)':getStatus(item)==='low'?'var(--warn)':'var(--accent)';
+
+    return`<div class="var-card" style="${productAlerts.length?'border-color:color-mix(in srgb,var(--warn) 40%,transparent)':''}">
       <div class="var-card-header">
         <div>
-          <div class="var-card-name">${item.name}</div>
-          <div style="font-size:11px;color:var(--muted);font-family:'DM Mono',monospace">${item.sku} · ${v.label} variants · Parent stock: <span style="color:var(--accent)">${item.stock}</span></div>
+          <div class="var-card-name">${item.name}
+            ${productAlerts.length?`<span style="background:var(--danger);color:#fff;border-radius:99px;padding:1px 8px;font-size:10px;margin-left:6px;font-family:'DM Sans',sans-serif;font-weight:600">${productAlerts.length} alert${productAlerts.length>1?'s':''}</span>`:''}
+          </div>
+          <div style="font-size:11px;color:var(--muted);font-family:'DM Mono',monospace;margin-top:2px">
+            ${item.sku} · ${v.label} variants · Parent: <span style="color:${parentStatusColor};font-weight:600">${item.stock} units</span>
+          </div>
         </div>
-        <div style="display:flex;gap:6px">
+        <div style="display:flex;gap:6px;align-items:center">
+          <button class="btn btn-ghost btn-sm" onclick="openSetReorderModal(${pid})" title="Set reorder points for all variants" style="border-color:var(--warn);color:var(--warn)">⚠ Set Min</button>
           <button class="btn btn-ghost btn-sm" onclick="editVariant(${pid})">✏️ Edit</button>
           <button class="btn btn-ghost btn-sm" style="color:var(--danger);border-color:var(--danger)" onclick="deleteVariant(${pid})">🗑</button>
         </div>
@@ -1769,10 +1920,82 @@ function renderVarCards(){
         <div class="var-summary-item">Variants: <span>${v.attrs.length}</span></div>
         <div class="var-summary-item">Total Stock: <span>${totalStock}</span></div>
         <div class="var-summary-item">Value: <span>₹${totalVal.toLocaleString('en-IN',{maximumFractionDigits:0})}</span></div>
-        <div class="var-summary-item">Out of Stock: <span style="color:var(--danger)">${v.attrs.filter(a=>a.stock===0).length}</span></div>
+        <div class="var-summary-item">Low/Out: <span style="color:${productAlerts.length?'var(--danger)':'var(--accent)'}">${productAlerts.length}</span></div>
       </div>
     </div>`;
   }).join('');
+
+  container.innerHTML = html;
+  updateAlertCount();
+}
+
+// Quick set exact quantity for a variant
+function variantQuickSet(pid, attrIdx){
+  if(!variants[pid]) return;
+  const attr = variants[pid].attrs[attrIdx];
+  const newVal = prompt(`Set exact stock for "${attr.value}":`, attr.stock);
+  if(newVal === null) return;
+  const parsed = parseInt(newVal);
+  if(isNaN(parsed) || parsed < 0){ toast('⚠️','Invalid quantity'); return; }
+  const delta = parsed - attr.stock;
+  if(delta !== 0) variantAdjustStock(pid, attrIdx, delta);
+}
+
+// Quick reorder modal for setting all min levels at once
+function openSetReorderModal(pid){
+  const item = items.find(i=>i.id==pid);
+  const v = variants[pid];
+  if(!item||!v) return;
+
+  // Build a simple modal-style toast panel
+  const existing = document.getElementById('reorder-modal-overlay');
+  if(existing) existing.remove();
+
+  const overlay = document.createElement('div');
+  overlay.id = 'reorder-modal-overlay';
+  overlay.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:200;display:flex;align-items:center;justify-content:center';
+  overlay.innerHTML=`
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:24px;width:420px;max-width:95vw;max-height:85vh;overflow-y:auto">
+      <div style="font-family:'Syne',sans-serif;font-size:16px;font-weight:700;margin-bottom:4px">⚠ Set Low Stock Alert — Min Quantity</div>
+      <div style="color:var(--muted);font-size:12px;margin-bottom:18px">${item.name} · ${v.label} variants — Alert fires when stock drops at or below this number</div>
+      ${v.attrs.map((a,idx)=>{
+        const rpt = a.reorderPoint ?? 5;
+        const st  = getVarStatus(a);
+        const sc  = st==='out'?'var(--danger)':st==='low'?'var(--warn)':'var(--accent)';
+        return`<div style="display:flex;align-items:center;gap:11px;padding:10px 0;border-bottom:1px solid var(--border)">
+          ${v.type==='color'?`<span style="width:12px;height:12px;border-radius:50%;background:${a.color};flex-shrink:0;border:1px solid rgba(255,255,255,.2)"></span>`:''}
+          <div style="flex:1">
+            <div style="font-weight:600;font-size:13px">${a.value}</div>
+            <div style="font-size:11px;color:${sc}">Current: ${a.stock} units</div>
+          </div>
+          <div style="display:flex;flex-direction:column;align-items:center;gap:2px">
+            <div style="font-size:10px;color:var(--warn);text-transform:uppercase;letter-spacing:.3px">Alert below</div>
+            <input id="rp-input-${idx}" type="number" min="0" value="${rpt}" style="width:65px;padding:6px 8px;background:var(--bg);border:2px solid var(--warn);border-radius:7px;color:var(--text);font-family:'DM Mono',monospace;font-size:14px;text-align:center;outline:none">
+          </div>
+        </div>`;
+      }).join('')}
+      <div style="display:flex;gap:8px;margin-top:18px;justify-content:flex-end">
+        <button onclick="document.getElementById('reorder-modal-overlay').remove()" style="padding:8px 16px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text);cursor:pointer;font-family:'DM Sans',sans-serif">Cancel</button>
+        <button onclick="saveReorderPoints(${pid})" style="padding:8px 16px;background:var(--accent);border:none;border-radius:8px;color:#000;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif">💾 Save Alert Thresholds</button>
+      </div>
+    </div>`;
+  document.body.appendChild(overlay);
+  overlay.addEventListener('click', e=>{ if(e.target===overlay) overlay.remove(); });
+}
+
+function saveReorderPoints(pid){
+  const v = variants[pid];
+  if(!v) return;
+  v.attrs.forEach((a,idx)=>{
+    const inp = document.getElementById('rp-input-'+idx);
+    if(inp) a.reorderPoint = parseInt(inp.value)||0;
+  });
+  localStorage.setItem('sf_variants', JSON.stringify(variants));
+  document.getElementById('reorder-modal-overlay')?.remove();
+  renderVarCards();
+  updateAlertCount();
+  syncToSheet();
+  toast('✅','Alert thresholds saved & synced!');
 }
 
 function deleteVariant(pid){
