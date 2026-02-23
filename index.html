@@ -306,6 +306,65 @@ kbd{background:var(--surface2);border:1px solid var(--border);border-radius:4px;
 .var-chip-bar{height:3px;border-radius:99px;background:var(--border);margin-top:5px;overflow:hidden}
 .var-chip-bar-fill{height:100%;border-radius:99px;transition:width .4s}
 .var-alert-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0;animation:pulse 1.5s infinite}
+
+/* ===== PRODUCTION TAB ===== */
+.prod-layout{display:grid;grid-template-columns:340px 1fr;gap:16px;align-items:start}
+.prod-form-wrap{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:22px;position:sticky;top:80px}
+.prod-list-wrap{display:flex;flex-direction:column;gap:14px}
+.prod-title{font-family:'Syne',sans-serif;font-size:15px;font-weight:700;margin-bottom:16px}
+.prod-section{background:var(--surface2);border-radius:10px;padding:14px;margin-bottom:12px}
+.prod-section-label{font-size:10px;color:var(--accent);text-transform:uppercase;letter-spacing:.6px;font-weight:700;margin-bottom:10px}
+.prod-input{width:100%;padding:8px 11px;background:var(--bg);border:1px solid var(--border);border-radius:7px;color:var(--text);font-family:'DM Sans',sans-serif;font-size:13px;outline:none;transition:border-color .2s}
+.prod-input:focus{border-color:var(--accent)}
+.prod-row{display:grid;grid-template-columns:1.5fr 0.8fr 0.8fr 30px;gap:6px;margin-bottom:6px;align-items:center}
+.prod-row-label{display:grid;grid-template-columns:1.5fr 0.8fr 0.8fr 30px;gap:6px;margin-bottom:4px}
+.prod-row-label div{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.3px}
+.prod-del{background:none;border:1px solid var(--border);border-radius:6px;color:var(--danger);cursor:pointer;width:28px;height:28px;display:flex;align-items:center;justify-content:center;font-size:12px;flex-shrink:0;transition:background .15s}
+.prod-del:hover{background:color-mix(in srgb,var(--danger) 15%,transparent)}
+.prod-card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:20px}
+.prod-card-header{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:16px}
+.prod-card-name{font-family:'Syne',sans-serif;font-size:15px;font-weight:700}
+.prod-card-sub{font-size:11px;color:var(--muted);font-family:'DM Mono',monospace;margin-top:2px}
+.prod-cost-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:16px}
+.prod-cost-box{background:var(--surface2);border-radius:9px;padding:12px;text-align:center}
+.prod-cost-box-label{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;margin-bottom:4px}
+.prod-cost-box-val{font-family:'Syne',sans-serif;font-size:16px;font-weight:700}
+.prod-materials-table{width:100%;border-collapse:collapse;font-size:12px;margin-bottom:10px}
+.prod-materials-table th{background:var(--surface2);padding:7px 10px;text-align:left;font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;border-bottom:1px solid var(--border)}
+.prod-materials-table td{padding:7px 10px;border-bottom:1px solid var(--border)}
+.prod-margin-bar{height:6px;border-radius:99px;background:var(--border);overflow:hidden;margin-top:6px}
+.prod-margin-bar-fill{height:100%;border-radius:99px;transition:width .5s}
+.prod-batch-tag{display:inline-flex;align-items:center;gap:5px;background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:3px 9px;font-size:11px;font-family:'DM Mono',monospace}
+
+/* ===== ITERATION TAB ===== */
+.iter-layout{display:grid;grid-template-columns:1fr 380px;gap:16px;align-items:start}
+.iter-form-wrap{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:22px}
+.iter-log-wrap{display:flex;flex-direction:column;gap:12px}
+.iter-title{font-family:'Syne',sans-serif;font-size:15px;font-weight:700;margin-bottom:16px}
+.iter-card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:16px;position:relative;overflow:hidden}
+.iter-card::before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px}
+.iter-card.saving::before{background:var(--accent)}
+.iter-card.testing::before{background:var(--warn)}
+.iter-card.success::before{background:var(--green)}
+.iter-card.failed::before{background:var(--danger)}
+.iter-card-title{font-weight:600;font-size:13px;margin-bottom:5px}
+.iter-card-meta{font-size:11px;color:var(--muted);margin-bottom:10px;display:flex;gap:10px;flex-wrap:wrap}
+.iter-tag{display:inline-block;padding:2px 8px;border-radius:99px;font-size:10px;font-weight:600}
+.iter-tag-saving{background:color-mix(in srgb,var(--accent) 15%,transparent);color:var(--accent)}
+.iter-tag-testing{background:color-mix(in srgb,var(--warn) 15%,transparent);color:var(--warn)}
+.iter-tag-success{background:color-mix(in srgb,var(--green) 15%,transparent);color:var(--green)}
+.iter-tag-failed{background:color-mix(in srgb,var(--danger) 15%,transparent);color:var(--danger)}
+.iter-impact{display:flex;align-items:center;gap:8px;background:var(--surface2);border-radius:8px;padding:9px 12px;margin-bottom:8px;font-size:12px}
+.iter-saving-amt{font-family:'Syne',sans-serif;font-size:16px;font-weight:700;color:var(--accent)}
+.iter-timeline{position:relative;padding-left:22px}
+.iter-timeline::before{content:'';position:absolute;left:7px;top:0;bottom:0;width:1px;background:var(--border)}
+.iter-tl-dot{position:absolute;left:0;width:15px;height:15px;border-radius:50%;border:2px solid var(--border);background:var(--surface)}
+.iter-tl-item{position:relative;margin-bottom:16px;padding-bottom:16px}
+.iter-tl-item:last-child{margin-bottom:0;padding-bottom:0}
+.iter-compare{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px}
+.iter-compare-box{background:var(--surface2);border-radius:8px;padding:10px;font-size:12px}
+.iter-compare-label{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.3px;margin-bottom:4px}
+.iter-compare-val{font-family:'DM Mono',monospace;font-size:14px;font-weight:600}
 .var-summary{display:flex;gap:14px;flex-wrap:wrap;margin-top:10px;padding-top:10px;border-top:1px solid var(--border)}
 .var-summary-item{font-size:11px;color:var(--muted)}
 .var-summary-item span{color:var(--text);font-weight:600;font-family:'DM Mono',monospace}
@@ -326,6 +385,8 @@ kbd{background:var(--surface2);border:1px solid var(--border);border-radius:4px;
     <button class="tab" onclick="switchTab('charts',this)">📊 Charts</button>
     <button class="tab" onclick="switchTab('suppliers',this)">🏢 Suppliers</button>
     <button class="tab" onclick="switchTab('mva',this)">🏭 MVA</button>
+    <button class="tab" onclick="switchTab('production',this)">⚙️ Production</button>
+    <button class="tab" onclick="switchTab('iteration',this)">🔁 Iteration</button>
     <button class="tab" onclick="switchTab('alerts',this)">⚠ Alerts <span id="alert-count" style="background:var(--danger);color:#fff;border-radius:99px;padding:1px 6px;font-size:10px;margin-left:2px;vertical-align:middle"></span></button>
     <button class="tab" onclick="switchTab('gst',this)">🧾 GST Bill</button>
   </div>
@@ -629,6 +690,185 @@ kbd{background:var(--surface2);border:1px solid var(--border);border-radius:4px;
   <div id="tab-mva" class="hidden">
     <div class="section-head"><div class="section-title">Manufacturing Value Added Dashboard</div></div>
     <div class="cards-grid" id="mva-content"></div>
+  </div>
+
+  <!-- ========== PRODUCTION TAB ========== -->
+  <div id="tab-production" class="hidden">
+    <div class="prod-layout">
+
+      <!-- LEFT: Form -->
+      <div class="prod-form-wrap">
+        <div class="prod-title">⚙️ Define Production Recipe</div>
+
+        <div class="prod-section">
+          <div class="prod-section-label">📦 Finished Product</div>
+          <select class="prod-input" id="prod-item-sel" style="margin-bottom:9px">
+            <option value="">— Select finished product —</option>
+          </select>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+            <div>
+              <div style="font-size:10px;color:var(--muted);margin-bottom:4px;text-transform:uppercase;letter-spacing:.3px">Batch Size (units)</div>
+              <input class="prod-input" id="prod-batch" type="number" min="1" value="10" placeholder="e.g. 10">
+            </div>
+            <div>
+              <div style="font-size:10px;color:var(--muted);margin-bottom:4px;text-transform:uppercase;letter-spacing:.3px">Selling Price (₹)</div>
+              <input class="prod-input" id="prod-sell-price" type="number" step="0.01" placeholder="auto from item">
+            </div>
+          </div>
+        </div>
+
+        <!-- Raw Materials -->
+        <div class="prod-section">
+          <div class="prod-section-label" style="display:flex;justify-content:space-between;align-items:center">
+            <span>🧪 Raw Materials</span>
+            <button class="btn btn-ghost btn-sm" onclick="addRawRow()" style="font-size:11px;padding:3px 9px">+ Add</button>
+          </div>
+          <div class="prod-row-label"><div>Material</div><div>Qty</div><div>Cost/Unit ₹</div><div></div></div>
+          <div id="raw-rows-container"></div>
+        </div>
+
+        <!-- Labor -->
+        <div class="prod-section">
+          <div class="prod-section-label" style="display:flex;justify-content:space-between;align-items:center">
+            <span>👷 Labour Cost</span>
+            <button class="btn btn-ghost btn-sm" onclick="addLaborRow()" style="font-size:11px;padding:3px 9px">+ Add</button>
+          </div>
+          <div class="prod-row-label"><div>Role / Task</div><div>Hours</div><div>Rate ₹/hr</div><div></div></div>
+          <div id="labor-rows-container"></div>
+        </div>
+
+        <!-- Overhead: electricity, time, misc -->
+        <div class="prod-section">
+          <div class="prod-section-label" style="display:flex;justify-content:space-between;align-items:center">
+            <span>⚡ Overhead Costs</span>
+            <button class="btn btn-ghost btn-sm" onclick="addOverheadRow()" style="font-size:11px;padding:3px 9px">+ Add</button>
+          </div>
+          <div class="prod-row-label"><div>Item</div><div>Units</div><div>Cost/Unit ₹</div><div></div></div>
+          <div id="overhead-rows-container"></div>
+          <div style="margin-top:9px;padding-top:9px;border-top:1px solid var(--border)">
+            <div style="font-size:10px;color:var(--muted);margin-bottom:6px;text-transform:uppercase;letter-spacing:.3px">⏱ Production Time</div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:7px">
+              <div>
+                <div style="font-size:10px;color:var(--muted);margin-bottom:3px">Hours per batch</div>
+                <input class="prod-input" id="prod-time-hrs" type="number" min="0" step="0.5" value="2" placeholder="hrs">
+              </div>
+              <div>
+                <div style="font-size:10px;color:var(--muted);margin-bottom:3px">Electricity (₹/batch)</div>
+                <input class="prod-input" id="prod-electricity" type="number" min="0" step="0.5" value="0" placeholder="₹">
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <button class="btn btn-primary" style="width:100%;margin-bottom:8px" onclick="saveRecipe()">💾 Save Recipe & Calculate</button>
+        <button class="btn btn-ghost" style="width:100%;font-size:12px" onclick="clearProdForm()">Clear Form</button>
+      </div>
+
+      <!-- RIGHT: Recipes list -->
+      <div class="prod-list-wrap" id="prod-cards-container">
+        <div style="color:var(--muted);font-size:13px;text-align:center;padding:60px 20px">
+          <div style="font-size:32px;margin-bottom:10px">⚙️</div>
+          No recipes yet. Select a product and fill in the costs.
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========== ITERATION TAB ========== -->
+  <div id="tab-iteration" class="hidden">
+    <div class="iter-layout">
+
+      <!-- LEFT: Log new iteration -->
+      <div class="iter-form-wrap">
+        <div class="iter-title">🔁 Log Cost Improvement Cycle</div>
+        <div style="margin-bottom:11px">
+          <div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;margin-bottom:5px">Product</div>
+          <select class="prod-input" id="iter-product-sel"><option value="">— Select product —</option></select>
+        </div>
+        <div style="margin-bottom:11px">
+          <div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;margin-bottom:5px">Improvement Title</div>
+          <input class="prod-input" id="iter-title" placeholder="e.g. Switch to cheaper wax supplier">
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-bottom:11px">
+          <div>
+            <div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;margin-bottom:5px">Category</div>
+            <select class="prod-input" id="iter-cat">
+              <option value="material">Raw Material</option>
+              <option value="labor">Labour</option>
+              <option value="overhead">Overhead / Electricity</option>
+              <option value="process">Process / Time</option>
+              <option value="supplier">Supplier Change</option>
+              <option value="design">Design / Formula</option>
+              <option value="other">Other</option>
+            </select>
+          </div>
+          <div>
+            <div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;margin-bottom:5px">Status</div>
+            <select class="prod-input" id="iter-status">
+              <option value="testing">🧪 Testing</option>
+              <option value="saving">💡 Idea / Planning</option>
+              <option value="success">✅ Implemented</option>
+              <option value="failed">❌ Failed / Rejected</option>
+            </select>
+          </div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-bottom:11px">
+          <div>
+            <div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;margin-bottom:5px">Cost Before (₹/batch)</div>
+            <input class="prod-input" id="iter-cost-before" type="number" step="0.01" placeholder="e.g. 250">
+          </div>
+          <div>
+            <div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;margin-bottom:5px">Cost After (₹/batch)</div>
+            <input class="prod-input" id="iter-cost-after" type="number" step="0.01" placeholder="e.g. 210">
+          </div>
+        </div>
+        <div style="margin-bottom:11px">
+          <div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;margin-bottom:5px">What Changed</div>
+          <textarea class="prod-input" id="iter-what" rows="2" placeholder="Describe what you changed and why..."></textarea>
+        </div>
+        <div style="margin-bottom:11px">
+          <div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;margin-bottom:5px">Result / Observation</div>
+          <textarea class="prod-input" id="iter-result" rows="2" placeholder="Quality impact, quantity impact, any issues..."></textarea>
+        </div>
+        <div style="margin-bottom:15px">
+          <div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;margin-bottom:5px">Next Step / Action</div>
+          <input class="prod-input" id="iter-next" placeholder="e.g. Order 50kg trial batch from new supplier">
+        </div>
+        <button class="btn btn-primary" style="width:100%;margin-bottom:8px" onclick="saveIteration()">📝 Log Iteration</button>
+        <button class="btn btn-ghost" style="width:100%;font-size:12px" onclick="clearIterForm()">Clear</button>
+
+        <!-- Summary panel -->
+        <div style="margin-top:18px;background:var(--surface2);border-radius:10px;padding:16px">
+          <div style="font-size:11px;color:var(--accent);font-weight:700;text-transform:uppercase;letter-spacing:.5px;margin-bottom:12px">📊 Improvement Summary</div>
+          <div id="iter-summary-panel"><div style="color:var(--muted);font-size:12px">Log iterations to see savings</div></div>
+        </div>
+      </div>
+
+      <!-- RIGHT: Timeline log -->
+      <div class="iter-log-wrap">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
+          <div style="font-family:'Syne',sans-serif;font-size:15px;font-weight:700">Improvement Timeline</div>
+          <div style="display:flex;gap:7px">
+            <select class="prod-input" id="iter-filter-prod" onchange="renderIterations()" style="padding:5px 9px;font-size:12px;width:auto">
+              <option value="">All Products</option>
+            </select>
+            <select class="prod-input" id="iter-filter-status" onchange="renderIterations()" style="padding:5px 9px;font-size:12px;width:auto">
+              <option value="">All Status</option>
+              <option value="testing">Testing</option>
+              <option value="saving">Planning</option>
+              <option value="success">Implemented</option>
+              <option value="failed">Failed</option>
+            </select>
+          </div>
+        </div>
+        <div id="iter-timeline-container">
+          <div style="color:var(--muted);font-size:13px;text-align:center;padding:60px 20px">
+            <div style="font-size:32px;margin-bottom:10px">🔁</div>
+            No iterations logged yet. Start tracking your cost improvements!
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
 
   <div id="tab-alerts" class="hidden">
@@ -1184,6 +1424,14 @@ async function loadFromSheet() {
       variants = data.variants;
       localStorage.setItem('sf_variants', JSON.stringify(variants));
     }
+    if (data.recipes && typeof data.recipes === 'object') {
+      recipes = data.recipes;
+      localStorage.setItem('sf_recipes', JSON.stringify(recipes));
+    }
+    if (data.iterations && Array.isArray(data.iterations)) {
+      iterations = data.iterations;
+      localStorage.setItem('sf_iterations', JSON.stringify(iterations));
+    }
 
     nextId = items.length > 0 ? Math.max(...items.map(i=>i.id)) + 1 : 1;
     nextSupId = suppliers.length > 0 ? Math.max(...suppliers.map(s=>s.id)) + 1 : 1;
@@ -1204,12 +1452,14 @@ async function syncToSheet(scanLog=null) {
   localStorage.setItem('sf_v3', JSON.stringify(items));
   localStorage.setItem('sf_sup_v3', JSON.stringify(suppliers));
   localStorage.setItem('sf_variants', JSON.stringify(variants));
+  localStorage.setItem('sf_recipes', JSON.stringify(recipes));
+  localStorage.setItem('sf_iterations', JSON.stringify(iterations));
 
   if (!SCRIPT_URL || !isConnected) return;
 
   try {
     setSyncState('syncing', 'Syncing to cloud...');
-    const payload = { items, suppliers, variants };
+    const payload = { items, suppliers, variants, recipes, iterations };
     if (scanLog) payload.scanLog = scanLog;
     await fetch(SCRIPT_URL, {
       method: 'POST',
@@ -1393,7 +1643,7 @@ async function deleteSupplier(id){if(!confirm('Delete supplier?'))return;supplie
    ============================================================ */
 function switchTab(tab,btn){
   document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active')); btn.classList.add('active');
-  ['inventory','addstock','deductstock','monitor','variants','charts','suppliers','mva','alerts','gst'].forEach(t=>{
+  ['inventory','addstock','deductstock','monitor','variants','charts','suppliers','mva','production','iteration','alerts','gst'].forEach(t=>{
     const el=document.getElementById('tab-'+t); if(el) el.classList.toggle('hidden',t!==tab);
   });
   if(tab==='charts')setTimeout(renderCharts,60);
@@ -1402,6 +1652,8 @@ function switchTab(tab,btn){
   if(tab==='deductstock'){setTimeout(()=>document.getElementById('deduct-barcode-input').focus(),100);}
   if(tab==='monitor'){setTimeout(()=>{drawFlowChart();runMonitorAlgo();},80);}
   if(tab==='variants'){populateVarProductSelect();renderVarCards();}
+  if(tab==='production'){populateProdSelects();renderRecipes();}
+  if(tab==='iteration'){populateIterSelects();renderIterations();renderIterSummary();}
 }
 function showSheetsSetup(){document.getElementById('sheet-url-modal').value=SCRIPT_URL; document.getElementById('sheets-modal').classList.add('open');}
 function closeSheetsModal(){document.getElementById('sheets-modal').classList.remove('open');}
@@ -2009,6 +2261,366 @@ function deleteVariant(pid){
 }
 
 /* ============================================================
+   PRODUCTION RECIPES
+   ============================================================ */
+let recipes = JSON.parse(localStorage.getItem('sf_recipes')||'{}');
+// recipes[itemId] = { batchSize, sellPrice, rawMaterials:[{name,qty,costPerUnit}], labor:[{role,hours,rate}], overhead:[{name,units,costPerUnit}], timeHrs, electricity }
+
+function populateProdSelects(){
+  const sel = document.getElementById('prod-item-sel');
+  const cur = sel.value;
+  sel.innerHTML = '<option value="">— Select finished product —</option>' +
+    items.map(i=>`<option value="${i.id}">${i.name} (${i.sku})${recipes[i.id]?' ✓':''}</option>`).join('');
+  sel.value = cur;
+  if(sel.value){ const it=items.find(x=>x.id==sel.value); if(it) document.getElementById('prod-sell-price').value=it.price; }
+  sel.onchange = () => {
+    const it = items.find(x=>x.id==sel.value);
+    if(it) document.getElementById('prod-sell-price').value = it.price;
+    if(recipes[sel.value]) loadRecipeIntoForm(sel.value);
+  };
+}
+
+function addRawRow(name='',qty=1,cost=0){
+  const row=document.createElement('div'); row.className='prod-row';
+  row.innerHTML=`<input class="prod-input" placeholder="e.g. Wax, Jar, Wick" value="${name}">
+    <input class="prod-input" type="number" min="0" step="0.01" value="${qty}" placeholder="Qty">
+    <input class="prod-input" type="number" min="0" step="0.01" value="${cost}" placeholder="₹">
+    <button class="prod-del" onclick="this.closest('.prod-row').remove()">✕</button>`;
+  document.getElementById('raw-rows-container').appendChild(row);
+}
+function addLaborRow(role='',hrs=1,rate=0){
+  const row=document.createElement('div'); row.className='prod-row';
+  row.innerHTML=`<input class="prod-input" placeholder="e.g. Pouring, Packing" value="${role}">
+    <input class="prod-input" type="number" min="0" step="0.5" value="${hrs}" placeholder="Hrs">
+    <input class="prod-input" type="number" min="0" step="0.5" value="${rate}" placeholder="₹/hr">
+    <button class="prod-del" onclick="this.closest('.prod-row').remove()">✕</button>`;
+  document.getElementById('labor-rows-container').appendChild(row);
+}
+function addOverheadRow(name='',units=1,cost=0){
+  const row=document.createElement('div'); row.className='prod-row';
+  row.innerHTML=`<input class="prod-input" placeholder="e.g. Packaging, Transport" value="${name}">
+    <input class="prod-input" type="number" min="0" step="0.01" value="${units}" placeholder="Units">
+    <input class="prod-input" type="number" min="0" step="0.01" value="${cost}" placeholder="₹">
+    <button class="prod-del" onclick="this.closest('.prod-row').remove()">✕</button>`;
+  document.getElementById('overhead-rows-container').appendChild(row);
+}
+
+function readRows(containerId){
+  const rows=[];
+  document.querySelectorAll('#'+containerId+' .prod-row').forEach(row=>{
+    const ins=row.querySelectorAll('input');
+    rows.push({name:ins[0].value.trim(), qty:parseFloat(ins[1].value)||0, cost:parseFloat(ins[2].value)||0});
+  });
+  return rows.filter(r=>r.name);
+}
+
+function saveRecipe(){
+  const pid = document.getElementById('prod-item-sel').value;
+  if(!pid){ toast('⚠️','Select a product first'); return; }
+  const batchSize  = parseInt(document.getElementById('prod-batch').value)||1;
+  const sellPrice  = parseFloat(document.getElementById('prod-sell-price').value)||0;
+  const timeHrs    = parseFloat(document.getElementById('prod-time-hrs').value)||0;
+  const electricity= parseFloat(document.getElementById('prod-electricity').value)||0;
+  const rawMats    = readRows('raw-rows-container');
+  const labor      = readRows('labor-rows-container');
+  const overhead   = readRows('overhead-rows-container');
+
+  recipes[pid] = {batchSize, sellPrice, rawMaterials:rawMats, labor, overhead, timeHrs, electricity, savedAt: new Date().toISOString()};
+  localStorage.setItem('sf_recipes', JSON.stringify(recipes));
+  renderRecipes();
+  populateProdSelects();
+  syncToSheet();
+  toast('✅','Recipe saved & synced!');
+}
+
+function calcRecipeCost(r){
+  const rawCost      = r.rawMaterials.reduce((s,m)=>s+(m.qty*m.cost),0);
+  const laborCost    = r.labor.reduce((s,l)=>s+(l.qty*l.cost),0);
+  const overheadCost = r.overhead.reduce((s,o)=>s+(o.qty*o.cost),0);
+  const electricityCost = r.electricity||0;
+  const totalBatch   = rawCost+laborCost+overheadCost+electricityCost;
+  const costPerUnit  = r.batchSize>0 ? totalBatch/r.batchSize : 0;
+  const margin       = r.sellPrice>0 ? ((r.sellPrice-costPerUnit)/r.sellPrice*100) : 0;
+  const profit       = r.sellPrice - costPerUnit;
+  return {rawCost, laborCost, overheadCost, electricityCost, totalBatch, costPerUnit, margin, profit};
+}
+
+function loadRecipeIntoForm(pid){
+  const r = recipes[pid]; if(!r) return;
+  document.getElementById('prod-batch').value = r.batchSize||1;
+  document.getElementById('prod-sell-price').value = r.sellPrice||0;
+  document.getElementById('prod-time-hrs').value = r.timeHrs||0;
+  document.getElementById('prod-electricity').value = r.electricity||0;
+  document.getElementById('raw-rows-container').innerHTML='';
+  document.getElementById('labor-rows-container').innerHTML='';
+  document.getElementById('overhead-rows-container').innerHTML='';
+  (r.rawMaterials||[]).forEach(m=>addRawRow(m.name,m.qty,m.cost));
+  (r.labor||[]).forEach(l=>addLaborRow(l.name,l.qty,l.cost));
+  (r.overhead||[]).forEach(o=>addOverheadRow(o.name,o.qty,o.cost));
+}
+
+function clearProdForm(){
+  document.getElementById('prod-item-sel').value='';
+  document.getElementById('prod-batch').value=10;
+  document.getElementById('prod-sell-price').value='';
+  document.getElementById('prod-time-hrs').value=2;
+  document.getElementById('prod-electricity').value=0;
+  document.getElementById('raw-rows-container').innerHTML='';
+  document.getElementById('labor-rows-container').innerHTML='';
+  document.getElementById('overhead-rows-container').innerHTML='';
+  addRawRow(); addRawRow(); addRawRow();
+  addLaborRow();
+  addOverheadRow();
+}
+
+function deleteRecipe(pid){
+  if(!confirm('Delete this recipe?')) return;
+  delete recipes[pid];
+  localStorage.setItem('sf_recipes', JSON.stringify(recipes));
+  renderRecipes(); populateProdSelects(); syncToSheet();
+  toast('🗑️','Recipe deleted');
+}
+
+function renderRecipes(){
+  const container = document.getElementById('prod-cards-container');
+  const keys = Object.keys(recipes);
+  if(!keys.length){
+    container.innerHTML=`<div style="color:var(--muted);font-size:13px;text-align:center;padding:60px 20px"><div style="font-size:32px;margin-bottom:10px">⚙️</div>No recipes yet. Select a product and fill in the costs.</div>`;
+    return;
+  }
+  container.innerHTML = keys.map(pid=>{
+    const item = items.find(i=>i.id==pid);
+    if(!item) return '';
+    const r = recipes[pid];
+    const c = calcRecipeCost(r);
+    const marginColor = c.margin>=40?'var(--accent)':c.margin>=20?'var(--warn)':'var(--danger)';
+    const profitColor = c.profit>=0?'var(--accent)':'var(--danger)';
+
+    const matRows = (r.rawMaterials||[]).map(m=>`<tr>
+      <td>${m.name}</td><td>${m.qty}</td><td>₹${m.cost.toFixed(2)}</td>
+      <td style="color:var(--accent)">₹${(m.qty*m.cost).toFixed(2)}</td></tr>`).join('');
+    const laborRows = (r.labor||[]).map(l=>`<tr>
+      <td>${l.name}</td><td>${l.qty} hrs</td><td>₹${l.cost.toFixed(2)}/hr</td>
+      <td style="color:var(--blue)">₹${(l.qty*l.cost).toFixed(2)}</td></tr>`).join('');
+    const ohRows = (r.overhead||[]).map(o=>`<tr>
+      <td>${o.name}</td><td>${o.qty}</td><td>₹${o.cost.toFixed(2)}</td>
+      <td style="color:var(--warn)">₹${(o.qty*o.cost).toFixed(2)}</td></tr>`).join('');
+
+    return`<div class="prod-card">
+      <div class="prod-card-header">
+        <div>
+          <div class="prod-card-name">${item.name}</div>
+          <div class="prod-card-sub">${item.sku} · Batch: ${r.batchSize} units · ⏱ ${r.timeHrs}hrs/batch</div>
+        </div>
+        <div style="display:flex;gap:7px;align-items:center">
+          <button class="btn btn-ghost btn-sm" onclick="loadRecipeIntoForm(${pid});document.getElementById('prod-item-sel').value='${pid}'">✏️ Edit</button>
+          <button class="btn btn-ghost btn-sm" style="color:var(--danger);border-color:var(--danger)" onclick="deleteRecipe(${pid})">🗑</button>
+        </div>
+      </div>
+
+      <!-- Cost breakdown boxes -->
+      <div class="prod-cost-grid">
+        <div class="prod-cost-box" style="border-top:2px solid var(--accent)">
+          <div class="prod-cost-box-label">Raw Materials</div>
+          <div class="prod-cost-box-val" style="color:var(--accent)">₹${c.rawCost.toFixed(0)}</div>
+          <div style="font-size:10px;color:var(--muted)">per batch</div>
+        </div>
+        <div class="prod-cost-box" style="border-top:2px solid var(--blue)">
+          <div class="prod-cost-box-label">Labour</div>
+          <div class="prod-cost-box-val" style="color:var(--blue)">₹${c.laborCost.toFixed(0)}</div>
+          <div style="font-size:10px;color:var(--muted)">per batch</div>
+        </div>
+        <div class="prod-cost-box" style="border-top:2px solid var(--warn)">
+          <div class="prod-cost-box-label">Overhead+⚡</div>
+          <div class="prod-cost-box-val" style="color:var(--warn)">₹${(c.overheadCost+c.electricityCost).toFixed(0)}</div>
+          <div style="font-size:10px;color:var(--muted)">per batch</div>
+        </div>
+        <div class="prod-cost-box" style="border-top:2px solid ${marginColor}">
+          <div class="prod-cost-box-label">Margin</div>
+          <div class="prod-cost-box-val" style="color:${marginColor}">${c.margin.toFixed(1)}%</div>
+          <div style="font-size:10px;color:${profitColor}">₹${c.profit.toFixed(2)}/unit</div>
+        </div>
+      </div>
+
+      <!-- Margin bar -->
+      <div style="margin-bottom:14px">
+        <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--muted);margin-bottom:4px">
+          <span>Cost/unit: <strong style="color:var(--text)">₹${c.costPerUnit.toFixed(2)}</strong></span>
+          <span>Sell: <strong style="color:var(--text)">₹${r.sellPrice.toFixed(2)}</strong></span>
+          <span>Total batch cost: <strong style="color:var(--text)">₹${c.totalBatch.toFixed(2)}</strong></span>
+        </div>
+        <div class="prod-margin-bar"><div class="prod-margin-bar-fill" style="width:${Math.max(0,Math.min(100,c.margin))}%;background:${marginColor}"></div></div>
+      </div>
+
+      <!-- Detail tables -->
+      <details style="margin-bottom:8px">
+        <summary style="cursor:pointer;font-size:12px;color:var(--muted);user-select:none;padding:6px 0">▸ View full cost breakdown</summary>
+        <div style="margin-top:10px">
+          ${matRows?`<div style="font-size:10px;color:var(--accent);text-transform:uppercase;font-weight:700;margin-bottom:4px">Raw Materials</div>
+          <table class="prod-materials-table"><thead><tr><th>Material</th><th>Qty</th><th>Rate</th><th>Total</th></tr></thead><tbody>${matRows}</tbody></table>`:''}
+          ${laborRows?`<div style="font-size:10px;color:var(--blue);text-transform:uppercase;font-weight:700;margin-bottom:4px;margin-top:10px">Labour</div>
+          <table class="prod-materials-table"><thead><tr><th>Role</th><th>Time</th><th>Rate</th><th>Total</th></tr></thead><tbody>${laborRows}</tbody></table>`:''}
+          ${ohRows||r.electricity?`<div style="font-size:10px;color:var(--warn);text-transform:uppercase;font-weight:700;margin-bottom:4px;margin-top:10px">Overhead</div>
+          <table class="prod-materials-table"><thead><tr><th>Item</th><th>Units</th><th>Rate</th><th>Total</th></tr></thead>
+          <tbody>${ohRows}${r.electricity?`<tr><td>⚡ Electricity</td><td>1</td><td>₹${r.electricity}</td><td style="color:var(--warn)">₹${r.electricity}</td></tr>`:''}</tbody></table>`:''}
+        </div>
+      </details>
+    </div>`;
+  }).join('');
+}
+
+/* ============================================================
+   ITERATION / IMPROVEMENT CYCLES
+   ============================================================ */
+let iterations = JSON.parse(localStorage.getItem('sf_iterations')||'[]');
+
+function populateIterSelects(){
+  ['iter-product-sel','iter-filter-prod'].forEach(id=>{
+    const sel=document.getElementById(id); if(!sel) return;
+    const cur=sel.value;
+    sel.innerHTML=(id==='iter-filter-prod'?'<option value="">All Products</option>':'<option value="">— Select product —</option>')+
+      items.map(i=>`<option value="${i.id}">${i.name}</option>`).join('');
+    sel.value=cur;
+  });
+}
+
+function saveIteration(){
+  const pid   = document.getElementById('iter-product-sel').value;
+  if(!pid){ toast('⚠️','Select a product first'); return; }
+  const title = document.getElementById('iter-title').value.trim();
+  if(!title){ toast('⚠️','Enter a title'); return; }
+  const iter = {
+    id        : Date.now(),
+    pid,
+    title,
+    category  : document.getElementById('iter-cat').value,
+    status    : document.getElementById('iter-status').value,
+    costBefore: parseFloat(document.getElementById('iter-cost-before').value)||0,
+    costAfter : parseFloat(document.getElementById('iter-cost-after').value)||0,
+    what      : document.getElementById('iter-what').value.trim(),
+    result    : document.getElementById('iter-result').value.trim(),
+    nextStep  : document.getElementById('iter-next').value.trim(),
+    date      : new Date().toISOString()
+  };
+  iterations.unshift(iter);
+  localStorage.setItem('sf_iterations', JSON.stringify(iterations));
+  renderIterations();
+  renderIterSummary();
+  clearIterForm();
+  syncToSheet();
+  toast('✅','Iteration logged!');
+}
+
+function clearIterForm(){
+  ['iter-product-sel','iter-title','iter-what','iter-result','iter-next','iter-cost-before','iter-cost-after'].forEach(id=>{
+    const el=document.getElementById(id); if(el) el.value='';
+  });
+  document.getElementById('iter-status').value='testing';
+  document.getElementById('iter-cat').value='material';
+}
+
+function deleteIteration(id){
+  if(!confirm('Delete this iteration?')) return;
+  iterations=iterations.filter(i=>i.id!==id);
+  localStorage.setItem('sf_iterations', JSON.stringify(iterations));
+  renderIterations(); renderIterSummary(); syncToSheet();
+  toast('🗑️','Deleted');
+}
+
+function updateIterStatus(id, newStatus){
+  const it = iterations.find(i=>i.id===id);
+  if(!it) return;
+  it.status = newStatus;
+  localStorage.setItem('sf_iterations', JSON.stringify(iterations));
+  renderIterations(); renderIterSummary(); syncToSheet();
+  toast('✅','Status updated');
+}
+
+const iterCatLabel={material:'🧪 Raw Material',labor:'👷 Labour',overhead:'⚡ Overhead',process:'⏱ Process',supplier:'🏢 Supplier',design:'🎨 Design/Formula',other:'📝 Other'};
+const iterStatusLabel={saving:'💡 Planning',testing:'🧪 Testing',success:'✅ Implemented',failed:'❌ Failed'};
+
+function renderIterations(){
+  const container = document.getElementById('iter-timeline-container');
+  const filterProd   = document.getElementById('iter-filter-prod')?.value||'';
+  const filterStatus = document.getElementById('iter-filter-status')?.value||'';
+  let list = iterations.filter(i=>{
+    if(filterProd && i.pid!=filterProd) return false;
+    if(filterStatus && i.status!==filterStatus) return false;
+    return true;
+  });
+  if(!list.length){
+    container.innerHTML=`<div style="color:var(--muted);font-size:13px;text-align:center;padding:60px 20px"><div style="font-size:32px;margin-bottom:10px">🔁</div>No iterations found.</div>`;
+    return;
+  }
+  container.innerHTML='<div class="iter-timeline">'+list.map(it=>{
+    const item=items.find(i=>i.id==it.pid);
+    const saving = it.costBefore>0&&it.costAfter>0 ? it.costBefore-it.costAfter : null;
+    const savingPct = saving!==null&&it.costBefore>0 ? (saving/it.costBefore*100).toFixed(1) : null;
+    const dotColor = {saving:'var(--blue)',testing:'var(--warn)',success:'var(--accent)',failed:'var(--danger)'}[it.status]||'var(--muted)';
+    const dateStr  = new Date(it.date).toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'numeric'});
+    return`<div class="iter-tl-item">
+      <div class="iter-tl-dot" style="border-color:${dotColor};background:color-mix(in srgb,${dotColor} 20%,var(--surface))"></div>
+      <div class="iter-card ${it.status}">
+        <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px">
+          <div>
+            <div class="iter-card-title">${it.title}</div>
+            <div class="iter-card-meta">
+              <span>${item?item.name:'Unknown'}</span>
+              <span class="iter-tag iter-tag-${it.status}">${iterStatusLabel[it.status]||it.status}</span>
+              <span style="font-size:10px;color:var(--muted);font-family:'DM Mono',monospace">${iterCatLabel[it.category]||it.category}</span>
+              <span style="font-size:10px;color:var(--muted)">${dateStr}</span>
+            </div>
+          </div>
+          <div style="display:flex;gap:5px;flex-shrink:0">
+            <select onchange="updateIterStatus(${it.id},this.value)" style="padding:3px 7px;background:var(--surface2);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:11px;outline:none;cursor:pointer">
+              <option value="saving" ${it.status==='saving'?'selected':''}>💡 Planning</option>
+              <option value="testing" ${it.status==='testing'?'selected':''}>🧪 Testing</option>
+              <option value="success" ${it.status==='success'?'selected':''}>✅ Done</option>
+              <option value="failed" ${it.status==='failed'?'selected':''}>❌ Failed</option>
+            </select>
+            <button class="prod-del" onclick="deleteIteration(${it.id})">🗑</button>
+          </div>
+        </div>
+
+        ${saving!==null?`<div class="iter-impact">
+          <div style="flex:1">
+            <div style="font-size:10px;color:var(--muted);margin-bottom:2px">COST SAVING PER BATCH</div>
+            <div class="iter-saving-amt" style="color:${saving>0?'var(--accent)':'var(--danger)'}">${saving>0?'−':'+'} ₹${Math.abs(saving).toFixed(2)} <span style="font-size:12px;font-weight:400;color:var(--muted)">(${savingPct}%)</span></div>
+          </div>
+          <div class="iter-compare">
+            <div class="iter-compare-box"><div class="iter-compare-label">Before</div><div class="iter-compare-val" style="color:var(--danger)">₹${it.costBefore.toFixed(2)}</div></div>
+            <div class="iter-compare-box"><div class="iter-compare-label">After</div><div class="iter-compare-val" style="color:${saving>0?'var(--accent)':'var(--danger)'}">₹${it.costAfter.toFixed(2)}</div></div>
+          </div>
+        </div>`:''}
+
+        ${it.what?`<div style="margin-bottom:6px"><div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.3px;margin-bottom:3px">What Changed</div><div style="font-size:12px">${it.what}</div></div>`:''}
+        ${it.result?`<div style="margin-bottom:6px"><div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.3px;margin-bottom:3px">Result</div><div style="font-size:12px;color:var(--muted)">${it.result}</div></div>`:''}
+        ${it.nextStep?`<div style="background:var(--surface2);border-radius:7px;padding:7px 11px;font-size:12px">🎯 Next: ${it.nextStep}</div>`:''}
+      </div>
+    </div>`;
+  }).join('')+'</div>';
+}
+
+function renderIterSummary(){
+  const panel = document.getElementById('iter-summary-panel');
+  if(!panel||!iterations.length){ if(panel) panel.innerHTML='<div style="color:var(--muted);font-size:12px">Log iterations to see savings</div>'; return; }
+  const done    = iterations.filter(i=>i.status==='success');
+  const testing = iterations.filter(i=>i.status==='testing');
+  const totalSaving = done.filter(i=>i.costBefore>0&&i.costAfter>0).reduce((s,i)=>s+(i.costBefore-i.costAfter),0);
+  const byProd = {};
+  done.forEach(i=>{ if(!byProd[i.pid]) byProd[i.pid]=0; if(i.costBefore>0&&i.costAfter>0) byProd[i.pid]+=(i.costBefore-i.costAfter); });
+  panel.innerHTML=`
+    <div class="card-row"><span class="card-label">Total Iterations</span><span class="card-val">${iterations.length}</span></div>
+    <div class="card-row"><span class="card-label">✅ Implemented</span><span class="card-val" style="color:var(--accent)">${done.length}</span></div>
+    <div class="card-row"><span class="card-label">🧪 Testing</span><span class="card-val" style="color:var(--warn)">${testing.length}</span></div>
+    <div class="card-row"><span class="card-label">💰 Total Saved/batch</span><span class="card-val" style="color:var(--accent)">₹${totalSaving.toFixed(2)}</span></div>
+    ${Object.entries(byProd).slice(0,3).map(([pid,sav])=>{
+      const it=items.find(i=>i.id==pid);
+      return`<div class="card-row"><span class="card-label" style="font-size:11px">${it?it.name:'Unknown'}</span><span class="card-val" style="color:var(--accent);font-size:12px">−₹${sav.toFixed(2)}</span></div>`;
+    }).join('')}`;
+}
+
+/* ============================================================
    START APP
    ============================================================ */
 async function init() {
@@ -2021,6 +2633,11 @@ async function init() {
 
   // Init variants form with 3 empty rows
   addVarAttrRow(); addVarAttrRow(); addVarAttrRow();
+
+  // Init production form with default rows
+  addRawRow('',1,0); addRawRow('',1,0); addRawRow('',1,0);
+  addLaborRow('',1,0);
+  addOverheadRow('',1,0);
   
   render();
 
