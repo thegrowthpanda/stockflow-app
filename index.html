@@ -185,6 +185,49 @@ label{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:
 ::-webkit-scrollbar-track{background:var(--bg)}
 ::-webkit-scrollbar-thumb{background:var(--border);border-radius:99px}
 kbd{background:var(--surface2);border:1px solid var(--border);border-radius:4px;padding:1px 6px;font-family:'DM Mono',monospace;font-size:11px}
+
+/* BARCODE SCAN TABS */
+.scan-tab-wrap{max-width:680px;margin:0 auto}
+.scan-mode-toggle{display:flex;gap:0;background:var(--surface2);border-radius:10px;padding:4px;margin-bottom:20px;border:1px solid var(--border)}
+.scan-mode-btn{flex:1;padding:10px 16px;border-radius:7px;border:none;cursor:pointer;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:600;transition:all .2s;color:var(--muted);background:none}
+.scan-mode-btn.active{color:#fff}
+.scan-mode-btn.add.active{background:var(--green)}
+.scan-mode-btn.deduct.active{background:var(--danger)}
+.scan-hero{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:28px;margin-bottom:16px}
+.scan-hero-title{font-family:'Syne',sans-serif;font-size:18px;font-weight:700;margin-bottom:6px}
+.scan-input-row{display:flex;gap:9px;margin-bottom:14px;align-items:flex-end}
+.scan-barcode-input{flex:1;padding:13px 16px;background:var(--bg);border:2px solid var(--border);border-radius:10px;color:var(--text);font-family:'DM Mono',monospace;font-size:16px;letter-spacing:2px;outline:none;transition:border-color .2s}
+.scan-barcode-input:focus{border-color:var(--accent)}
+.scan-barcode-input.add-mode:focus{border-color:var(--green)}
+.scan-barcode-input.deduct-mode:focus{border-color:var(--danger)}
+.qty-input-wrap{display:flex;flex-direction:column;gap:4px}
+.qty-input-wrap label{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.4px}
+.qty-input{width:90px;padding:13px 12px;background:var(--bg);border:2px solid var(--border);border-radius:10px;color:var(--text);font-family:'DM Mono',monospace;font-size:16px;text-align:center;outline:none;transition:border-color .2s}
+.qty-input:focus{border-color:var(--accent)}
+.scan-result-card{background:var(--surface2);border-radius:12px;padding:20px;margin-bottom:14px;border:1px solid var(--border);display:none}
+.scan-result-card.show{display:block}
+.scan-result-card.add-result{border-color:color-mix(in srgb,var(--green) 40%,transparent);background:color-mix(in srgb,var(--green) 6%,var(--surface2))}
+.scan-result-card.deduct-result{border-color:color-mix(in srgb,var(--danger) 40%,transparent);background:color-mix(in srgb,var(--danger) 6%,var(--surface2))}
+.scan-result-name{font-family:'Syne',sans-serif;font-size:17px;font-weight:700;margin-bottom:3px}
+.scan-result-sku{font-family:'DM Mono',monospace;font-size:12px;color:var(--muted);margin-bottom:12px}
+.scan-stock-change{display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.scan-stock-box{background:var(--bg);border:1px solid var(--border);border-radius:9px;padding:10px 18px;text-align:center}
+.scan-stock-box .lbl{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;margin-bottom:3px}
+.scan-stock-box .val{font-family:'Syne',sans-serif;font-size:22px;font-weight:700}
+.scan-arrow{font-size:22px;color:var(--muted)}
+.scan-history{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:20px}
+.scan-history-title{font-family:'Syne',sans-serif;font-size:14px;font-weight:700;margin-bottom:13px;color:var(--muted)}
+.scan-hist-item{display:flex;align-items:center;gap:11px;padding:9px 0;border-bottom:1px solid var(--border);font-size:13px}
+.scan-hist-item:last-child{border-bottom:none}
+.scan-hist-badge{font-size:11px;font-weight:700;padding:3px 9px;border-radius:99px;flex-shrink:0}
+.scan-hist-add{background:color-mix(in srgb,var(--green) 15%,transparent);color:var(--green)}
+.scan-hist-deduct{background:color-mix(in srgb,var(--danger) 15%,transparent);color:var(--danger)}
+.scan-hist-info{flex:1}
+.scan-hist-time{font-size:11px;color:var(--muted);font-family:'DM Mono',monospace;flex-shrink:0}
+.not-found-card{background:color-mix(in srgb,var(--warn) 8%,var(--surface2));border:1px solid color-mix(in srgb,var(--warn) 35%,transparent);border-radius:12px;padding:18px;text-align:center;display:none}
+.not-found-card.show{display:block}
+.scan-cam-btn{white-space:nowrap;border-color:var(--accent)!important;color:var(--accent)!important}
+.reader-scan{width:100%;margin-top:12px;display:none;border-radius:8px;overflow:hidden;border:1px solid var(--border)}
 </style>
 </head>
 <body>
@@ -195,6 +238,8 @@ kbd{background:var(--surface2);border:1px solid var(--border);border-radius:4px;
   </div>
   <div class="tabs">
     <button class="tab active" onclick="switchTab('inventory',this)">📦 Inventory</button>
+    <button class="tab" onclick="switchTab('addstock',this)">📥 Add Stock</button>
+    <button class="tab" onclick="switchTab('deductstock',this)">📤 Deduct Stock</button>
     <button class="tab" onclick="switchTab('charts',this)">📊 Charts</button>
     <button class="tab" onclick="switchTab('suppliers',this)">🏢 Suppliers</button>
     <button class="tab" onclick="switchTab('mva',this)">🏭 MVA</button>
@@ -282,7 +327,99 @@ kbd{background:var(--surface2);border:1px solid var(--border);border-radius:4px;
     </div>
   </div>
 
-  <div id="tab-charts" class="hidden">
+  <div id="tab-addstock" class="hidden">
+    <div class="scan-tab-wrap">
+      <div class="scan-hero" style="border-color:color-mix(in srgb,var(--green) 35%,transparent)">
+        <div class="scan-hero-title" style="color:var(--green)">📥 Add Stock via Barcode</div>
+        <p style="color:var(--muted);font-size:13px;margin-bottom:18px">Scan or type a product barcode. Stock will be added to inventory automatically.</p>
+        <div class="scan-input-row">
+          <div style="flex:1;display:flex;flex-direction:column;gap:4px">
+            <label style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.4px">Barcode (Scan or Type)</label>
+            <div style="display:flex;gap:7px">
+              <input class="scan-barcode-input add-mode" id="add-barcode-input" placeholder="Scan barcode here..." autocomplete="off"
+                onkeydown="if(event.key==='Enter')processBarcodeScan('add')">
+              <button class="btn btn-ghost btn-sm scan-cam-btn" onclick="toggleScanCamera('add')">📷 Camera</button>
+            </div>
+          </div>
+          <div class="qty-input-wrap">
+            <label>Quantity</label>
+            <input class="qty-input" id="add-qty-input" type="number" min="1" value="1">
+          </div>
+          <button class="btn btn-green" onclick="processBarcodeScan('add')" style="height:46px;align-self:flex-end">➕ Add</button>
+        </div>
+        <div id="add-cam-reader" class="reader-scan"></div>
+        <div class="not-found-card" id="add-not-found">
+          <div style="font-size:28px;margin-bottom:6px">🔍</div>
+          <div style="font-weight:600;margin-bottom:3px">Barcode not found in inventory</div>
+          <div style="color:var(--muted);font-size:12px;margin-bottom:12px" id="add-not-found-code"></div>
+          <button class="btn btn-primary btn-sm" onclick="openModalWithBarcode()">➕ Register as New Item</button>
+        </div>
+        <div class="scan-result-card add-result" id="add-result-card">
+          <div class="scan-result-name" id="add-result-name"></div>
+          <div class="scan-result-sku" id="add-result-sku"></div>
+          <div class="scan-stock-change">
+            <div class="scan-stock-box"><div class="lbl">Before</div><div class="val" id="add-before" style="color:var(--muted)"></div></div>
+            <div class="scan-arrow">→</div>
+            <div class="scan-stock-box"><div class="lbl">Added</div><div class="val" style="color:var(--green)" id="add-delta"></div></div>
+            <div class="scan-arrow">→</div>
+            <div class="scan-stock-box"><div class="lbl">New Stock</div><div class="val" style="color:var(--green)" id="add-after"></div></div>
+          </div>
+        </div>
+      </div>
+      <div class="scan-history" id="add-history-wrap">
+        <div class="scan-history-title">📋 Recent Add Transactions</div>
+        <div id="add-history-list"><div style="color:var(--muted);font-size:13px">No transactions yet this session.</div></div>
+      </div>
+    </div>
+  </div>
+
+  <div id="tab-deductstock" class="hidden">
+    <div class="scan-tab-wrap">
+      <div class="scan-hero" style="border-color:color-mix(in srgb,var(--danger) 35%,transparent)">
+        <div class="scan-hero-title" style="color:var(--danger)">📤 Deduct Stock / Sell via Barcode</div>
+        <p style="color:var(--muted);font-size:13px;margin-bottom:18px">Scan or type a product barcode when selling or using stock. Inventory reduces automatically.</p>
+        <div class="scan-input-row">
+          <div style="flex:1;display:flex;flex-direction:column;gap:4px">
+            <label style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.4px">Barcode (Scan or Type)</label>
+            <div style="display:flex;gap:7px">
+              <input class="scan-barcode-input deduct-mode" id="deduct-barcode-input" placeholder="Scan barcode here..." autocomplete="off"
+                onkeydown="if(event.key==='Enter')processBarcodeScan('deduct')">
+              <button class="btn btn-ghost btn-sm scan-cam-btn" onclick="toggleScanCamera('deduct')" style="border-color:var(--danger)!important;color:var(--danger)!important">📷 Camera</button>
+            </div>
+          </div>
+          <div class="qty-input-wrap">
+            <label>Quantity</label>
+            <input class="qty-input" id="deduct-qty-input" type="number" min="1" value="1">
+          </div>
+          <button class="btn" style="background:var(--danger);color:#fff;height:46px;align-self:flex-end" onclick="processBarcodeScan('deduct')">➖ Deduct</button>
+        </div>
+        <div id="deduct-cam-reader" class="reader-scan"></div>
+        <div class="not-found-card" id="deduct-not-found">
+          <div style="font-size:28px;margin-bottom:6px">🔍</div>
+          <div style="font-weight:600;margin-bottom:3px">Barcode not found in inventory</div>
+          <div style="color:var(--muted);font-size:12px" id="deduct-not-found-code"></div>
+        </div>
+        <div class="scan-result-card deduct-result" id="deduct-result-card">
+          <div class="scan-result-name" id="deduct-result-name"></div>
+          <div class="scan-result-sku" id="deduct-result-sku"></div>
+          <div class="scan-stock-change">
+            <div class="scan-stock-box"><div class="lbl">Before</div><div class="val" id="deduct-before" style="color:var(--muted)"></div></div>
+            <div class="scan-arrow">→</div>
+            <div class="scan-stock-box"><div class="lbl">Deducted</div><div class="val" style="color:var(--danger)" id="deduct-delta"></div></div>
+            <div class="scan-arrow">→</div>
+            <div class="scan-stock-box"><div class="lbl">New Stock</div><div class="val" id="deduct-after"></div></div>
+          </div>
+        </div>
+        <div id="deduct-warn" style="display:none;background:color-mix(in srgb,var(--warn) 10%,transparent);border:1px solid color-mix(in srgb,var(--warn) 40%,transparent);border-radius:9px;padding:12px 16px;margin-top:10px;font-size:13px;color:var(--warn)">
+          ⚠️ <strong>Warning:</strong> <span id="deduct-warn-msg"></span>
+        </div>
+      </div>
+      <div class="scan-history" id="deduct-history-wrap">
+        <div class="scan-history-title">📋 Recent Deduct / Sale Transactions</div>
+        <div id="deduct-history-list"><div style="color:var(--muted);font-size:13px">No transactions yet this session.</div></div>
+      </div>
+    </div>
+  </div>
     <div class="cards-grid" style="grid-template-columns:2fr 1fr">
       <div class="card"><div class="card-title">📈 Stock Levels by Item</div><div class="chart-wrap"><canvas id="chart-stock"></canvas></div></div>
       <div class="card"><div class="card-title">🥧 Value by Segment</div><div class="chart-wrap"><canvas id="chart-pie"></canvas></div></div>
@@ -627,6 +764,162 @@ function onScanFailure(error) {
 }
 
 /* ============================================================
+   BARCODE ADD / DEDUCT STOCK
+   ============================================================ */
+const scanHistory = [];
+let addCamScanner = null;
+let deductCamScanner = null;
+let lastNotFoundBarcode = '';
+
+function processBarcodeScan(mode) {
+  const inputEl = document.getElementById(mode+'-barcode-input');
+  const qtyEl   = document.getElementById(mode+'-qty-input');
+  const barcode  = inputEl.value.trim();
+  const qty      = parseInt(qtyEl.value) || 1;
+
+  // Hide previous results
+  document.getElementById(mode+'-result-card').classList.remove('show');
+  document.getElementById(mode+'-not-found').classList.remove('show');
+  if(mode==='deduct') document.getElementById('deduct-warn').style.display='none';
+
+  if(!barcode){ toast('⚠️','Please enter or scan a barcode'); inputEl.focus(); return; }
+  if(qty < 1){ toast('⚠️','Quantity must be at least 1'); return; }
+
+  // Look up item by barcode OR sku (fallback)
+  const item = items.find(i => (i.barcode && i.barcode === barcode) || i.sku === barcode);
+
+  if(!item){
+    lastNotFoundBarcode = barcode;
+    document.getElementById(mode+'-not-found').classList.add('show');
+    document.getElementById(mode+'-not-found-code').textContent = 'Scanned: ' + barcode;
+    toast('❌','Barcode not found in inventory');
+    inputEl.value=''; inputEl.focus();
+    return;
+  }
+
+  const before = item.stock;
+
+  if(mode === 'add'){
+    item.stock += qty;
+    const after = item.stock;
+
+    // Update result card
+    document.getElementById('add-result-name').textContent = item.name;
+    document.getElementById('add-result-sku').textContent  = item.sku + (item.barcode?' · '+item.barcode:'');
+    document.getElementById('add-before').textContent = before;
+    document.getElementById('add-delta').textContent  = '+'+qty;
+    document.getElementById('add-after').textContent  = after;
+    document.getElementById('add-result-card').classList.add('show');
+
+    addToScanHistory('add', item, qty, before, after);
+    toast('✅', `+${qty} added → ${item.name} now has ${after}`);
+
+  } else {
+    if(qty > before){
+      toast('⚠️','Cannot deduct more than current stock ('+before+')');
+      // Show warning but still allow proceeding
+      document.getElementById('deduct-warn').style.display='block';
+      document.getElementById('deduct-warn-msg').textContent = `Only ${before} in stock, cannot deduct ${qty}.`;
+      inputEl.value=''; inputEl.focus();
+      return;
+    }
+
+    item.stock -= qty;
+    const after = item.stock;
+
+    // Update result card
+    document.getElementById('deduct-result-name').textContent = item.name;
+    document.getElementById('deduct-result-sku').textContent  = item.sku + (item.barcode?' · '+item.barcode:'');
+    document.getElementById('deduct-before').textContent = before;
+    document.getElementById('deduct-delta').textContent  = '-'+qty;
+    document.getElementById('deduct-after').textContent  = after;
+    document.getElementById('deduct-after').style.color  = after <= item.reorderPoint ? 'var(--danger)' : 'var(--accent)';
+    document.getElementById('deduct-result-card').classList.add('show');
+
+    // Low stock warning after deduct
+    if(after <= item.reorderPoint && after > 0){
+      document.getElementById('deduct-warn').style.display='block';
+      document.getElementById('deduct-warn-msg').textContent = `${item.name} is now low (${after} left, reorder point: ${item.reorderPoint})`;
+    } else if(after === 0){
+      document.getElementById('deduct-warn').style.display='block';
+      document.getElementById('deduct-warn-msg').textContent = `${item.name} is now OUT OF STOCK!`;
+    }
+
+    addToScanHistory('deduct', item, qty, before, after);
+    toast('✅', `-${qty} deducted → ${item.name} now has ${after}`);
+  }
+
+  // Reset input, re-render, auto-sync
+  inputEl.value = '';
+  qtyEl.value = 1;
+  inputEl.focus();
+  render();
+  syncToSheet();
+}
+
+function addToScanHistory(mode, item, qty, before, after){
+  const now = new Date();
+  const timeStr = now.toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
+  scanHistory.unshift({mode, name:item.name, sku:item.sku, qty, before, after, time:timeStr});
+  if(scanHistory.length > 50) scanHistory.pop();
+  renderScanHistory(mode);
+}
+
+function renderScanHistory(mode){
+  const listEl = document.getElementById(mode+'-history-list');
+  const relevant = scanHistory.filter(h=>h.mode===mode);
+  if(!relevant.length){ listEl.innerHTML='<div style="color:var(--muted);font-size:13px">No transactions yet this session.</div>'; return; }
+  listEl.innerHTML = relevant.map(h=>{
+    const badge = h.mode==='add'
+      ? `<span class="scan-hist-badge scan-hist-add">+${h.qty}</span>`
+      : `<span class="scan-hist-badge scan-hist-deduct">-${h.qty}</span>`;
+    return `<div class="scan-hist-item">
+      ${badge}
+      <div class="scan-hist-info"><strong>${h.name}</strong> <span style="color:var(--muted);font-size:11px">${h.sku}</span><br><span style="color:var(--muted);font-size:12px">${h.before} → ${h.after}</span></div>
+      <div class="scan-hist-time">${h.time}</div>
+    </div>`;
+  }).join('');
+}
+
+function openModalWithBarcode(){
+  openModal();
+  setTimeout(()=>{
+    document.getElementById('f-barcode').value = lastNotFoundBarcode;
+    toast('📋','Barcode pre-filled — complete the item details');
+  }, 200);
+}
+
+// Camera toggles for add/deduct tabs
+function toggleScanCamera(mode){
+  const readerId = mode+'-cam-reader';
+  const readerEl = document.getElementById(readerId);
+  let scanner = mode==='add' ? addCamScanner : deductCamScanner;
+
+  if(scanner){
+    scanner.clear().catch(()=>{});
+    if(mode==='add') addCamScanner=null; else deductCamScanner=null;
+    readerEl.style.display='none';
+    return;
+  }
+
+  readerEl.style.display='block';
+  const newScanner = new Html5QrcodeScanner(readerId,
+    {fps:10, qrbox:{width:280, height:110}, supportedScanTypes:[Html5QrcodeScanType.SCAN_TYPE_CAMERA]}, false);
+
+  newScanner.render((decodedText)=>{
+    document.getElementById(mode+'-barcode-input').value = decodedText;
+    new Audio('data:audio/mp3;base64,//NExAAAAANIAAAAAExBTUUzLjEwMKqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq/9jDAAAABzOEAAAAAABzhAAAB//OAAAA//OAAAA//OAAAA//OAAAA//OAAAA//OAAAA//OAAAA').play().catch(()=>{});
+    newScanner.clear().catch(()=>{});
+    readerEl.style.display='none';
+    if(mode==='add') addCamScanner=null; else deductCamScanner=null;
+    toast('📷','Barcode scanned!');
+    setTimeout(()=>processBarcodeScan(mode), 300);
+  }, ()=>{});
+
+  if(mode==='add') addCamScanner=newScanner; else deductCamScanner=newScanner;
+}
+
+/* ============================================================
    GOOGLE SHEETS API LOGIC
    ============================================================ */
 async function pingSheet() {
@@ -862,8 +1155,10 @@ async function deleteSupplier(id){if(!confirm('Delete supplier?'))return;supplie
    ============================================================ */
 function switchTab(tab,btn){
   document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active')); btn.classList.add('active');
-  ['inventory','charts','suppliers','mva','alerts','gst'].forEach(t=>document.getElementById('tab-'+t).classList.toggle('hidden',t!==tab));
+  ['inventory','addstock','deductstock','charts','suppliers','mva','alerts','gst'].forEach(t=>document.getElementById('tab-'+t).classList.toggle('hidden',t!==tab));
   if(tab==='charts')setTimeout(renderCharts,60); if(tab==='gst'){populateQuickAdd();updateBill()}
+  if(tab==='addstock'){setTimeout(()=>document.getElementById('add-barcode-input').focus(),100)}
+  if(tab==='deductstock'){setTimeout(()=>document.getElementById('deduct-barcode-input').focus(),100)}
 }
 function showSheetsSetup(){document.getElementById('sheet-url-modal').value=SCRIPT_URL; document.getElementById('sheets-modal').classList.add('open');}
 function closeSheetsModal(){document.getElementById('sheets-modal').classList.remove('open');}
@@ -921,7 +1216,7 @@ function addBillItem(desc='',qty=1,rate=0,gst=18){
 function getBillRows(){const rows=[]; document.querySelectorAll('#bill-items-container .gst-item-row').forEach(row=>{const inputs=row.querySelectorAll('input,select'), desc=inputs[0].value.trim(), qty=+inputs[1].value||0, rate=+inputs[2].value||0, gst=+inputs[3].value||0; rows.push({desc,qty,rate,gst,taxable:qty*rate});}); return rows.filter(r=>r.desc||r.rate>0);}
 function populateQuickAdd(){const sel=document.getElementById('inv-quick-add'); if(!sel)return; const cur=sel.value; sel.innerHTML='<option value="">— Pick an inventory item —</option>'+items.map(i=>`<option value="${i.id}">${i.name} (₹${i.price} | GST ${i.gstRate}%)</option>`).join(''); sel.value=cur;}
 function quickAddItem(sel){const id=+sel.value; if(!id)return; const item=items.find(i=>i.id===id); if(item)addBillItem(`${item.name} [${item.sku}]`,1,item.price,item.gstRate||18); sel.value='';}
-function addToBill(itemId){const item=items.find(i=>i.id===itemId); if(!item)return; switchTab('gst',document.querySelectorAll('.tab')[5]); setTimeout(()=>addBillItem(`${item.name} [${item.sku}]`,1,item.price,item.gstRate||18),120); toast('🧾','Added to GST Bill!');}
+function addToBill(itemId){const item=items.find(i=>i.id===itemId); if(!item)return; switchTab('gst',document.querySelectorAll('.tab')[7]); setTimeout(()=>addBillItem(`${item.name} [${item.sku}]`,1,item.price,item.gstRate||18),120); toast('🧾','Added to GST Bill!');}
 function clearBill(){if(!confirm('Clear all items?'))return; document.getElementById('bill-items-container').innerHTML=''; billRowId=0; addBillItem(); toast('🗑️','Cleared.');}
 
 function updateBill(){
