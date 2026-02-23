@@ -228,6 +228,67 @@ kbd{background:var(--surface2);border:1px solid var(--border);border-radius:4px;
 .not-found-card.show{display:block}
 .scan-cam-btn{white-space:nowrap;border-color:var(--accent)!important;color:var(--accent)!important}
 .reader-scan{width:100%;margin-top:12px;display:none;border-radius:8px;overflow:hidden;border:1px solid var(--border)}
+
+/* ===== STOCK MONITOR FLOWCHART ===== */
+.monitor-layout{display:grid;grid-template-columns:1fr 340px;gap:16px;align-items:start}
+.monitor-flow{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:22px;overflow-x:auto}
+.monitor-sidebar{display:flex;flex-direction:column;gap:12px}
+.flow-title{font-family:'Syne',sans-serif;font-size:15px;font-weight:700;margin-bottom:18px;display:flex;align-items:center;gap:8px}
+.flow-canvas{position:relative;min-height:580px;min-width:560px}
+/* flow nodes */
+.fn{position:absolute;border-radius:10px;padding:10px 16px;font-size:12px;font-weight:600;text-align:center;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:3px;box-shadow:0 2px 12px rgba(0,0,0,.35);cursor:default;transition:transform .2s,box-shadow .2s;z-index:2}
+.fn:hover{transform:translateY(-2px);box-shadow:0 6px 22px rgba(0,0,0,.5)}
+.fn-start{background:linear-gradient(135deg,#00e5a0,#00b87a);color:#000;border-radius:50px;width:130px}
+.fn-process{background:var(--surface2);border:1.5px solid var(--border);color:var(--text);width:155px}
+.fn-decision{background:linear-gradient(135deg,#1e2535,#2a3347);border:2px solid var(--warn);color:var(--warn);width:160px;border-radius:8px;transform:rotate(0deg)}
+.fn-action-green{background:linear-gradient(135deg,#0d3322,#1a5c3a);border:1.5px solid var(--green);color:var(--green);width:155px}
+.fn-action-red{background:linear-gradient(135deg,#2d0d14,#5c1a24);border:1.5px solid var(--danger);color:var(--danger);width:155px}
+.fn-action-blue{background:linear-gradient(135deg,#0d1a2d,#1a3a5c);border:1.5px solid var(--blue);color:var(--blue);width:155px}
+.fn-action-yellow{background:linear-gradient(135deg,#2d2400,#5c4a00);border:1.5px solid var(--warn);color:var(--warn);width:155px}
+.fn-end{background:linear-gradient(135deg,#ff4757,#c0392b);color:#fff;border-radius:50px;width:130px}
+.fn-label{font-size:10px;color:var(--muted);font-weight:400;margin-top:1px}
+.fn-live{font-family:'DM Mono',monospace;font-size:13px;font-weight:700}
+/* SVG arrows */
+.flow-svg{position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:1}
+.flow-svg path,.flow-svg line{stroke:var(--border);stroke-width:1.8;fill:none;marker-end:url(#arrowhead)}
+.flow-svg text{fill:var(--muted);font-size:10px;font-family:'DM Sans',sans-serif}
+/* monitor sidebar cards */
+.mon-card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:16px}
+.mon-card-title{font-size:11px;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);margin-bottom:11px;font-weight:600}
+.mon-item{display:flex;align-items:center;gap:9px;padding:7px 0;border-bottom:1px solid var(--border);font-size:12px}
+.mon-item:last-child{border-bottom:none}
+.mon-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.mon-name{flex:1;font-weight:500}
+.mon-stock{font-family:'DM Mono',monospace;font-size:12px}
+.algo-step{display:flex;gap:9px;padding:8px 0;border-bottom:1px solid var(--border);align-items:flex-start;font-size:12px}
+.algo-step:last-child{border-bottom:none}
+.algo-num{width:20px;height:20px;border-radius:50%;background:var(--surface2);color:var(--accent);font-size:10px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px}
+.pulse-ring{animation:pulseRing 2s infinite}
+@keyframes pulseRing{0%,100%{opacity:1}50%{opacity:.4}}
+
+/* ===== VARIANTS ===== */
+.var-layout{display:grid;grid-template-columns:1fr 1fr;gap:16px;align-items:start}
+.var-form{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:22px}
+.var-list{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:22px}
+.var-title{font-family:'Syne',sans-serif;font-size:15px;font-weight:700;margin-bottom:16px}
+.var-product-select{width:100%;padding:9px 13px;background:var(--bg);border:1px solid var(--border);border-radius:8px;color:var(--text);font-family:'DM Sans',sans-serif;font-size:13px;outline:none;margin-bottom:14px}
+.var-attr-row{display:grid;grid-template-columns:1fr 1fr 80px 36px;gap:7px;margin-bottom:7px;align-items:center}
+.var-attr-input{padding:8px 10px;background:var(--bg);border:1px solid var(--border);border-radius:7px;color:var(--text);font-family:'DM Sans',sans-serif;font-size:12px;outline:none;width:100%}
+.var-attr-input:focus{border-color:var(--accent)}
+.color-dot-input{width:36px;height:36px;border-radius:7px;border:1px solid var(--border);cursor:pointer;padding:2px}
+.var-del-btn{background:none;border:1px solid var(--border);border-radius:7px;color:var(--danger);cursor:pointer;width:36px;height:36px;display:flex;align-items:center;justify-content:center;font-size:14px;transition:background .15s}
+.var-del-btn:hover{background:color-mix(in srgb,var(--danger) 15%,transparent)}
+.var-card{background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:16px;margin-bottom:12px}
+.var-card-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+.var-card-name{font-family:'Syne',sans-serif;font-size:14px;font-weight:700}
+.var-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:8px}
+.var-chip{border-radius:8px;padding:9px 12px;font-size:12px;font-weight:500;border:1.5px solid transparent;position:relative;overflow:hidden}
+.var-chip-color{width:10px;height:10px;border-radius:50%;display:inline-block;margin-right:5px;border:1px solid rgba(255,255,255,.25);vertical-align:middle}
+.var-chip-stock{font-family:'DM Mono',monospace;font-size:11px;color:var(--muted);margin-top:2px}
+.var-chip-status{position:absolute;top:5px;right:6px;width:6px;height:6px;border-radius:50%}
+.var-summary{display:flex;gap:14px;flex-wrap:wrap;margin-top:10px;padding-top:10px;border-top:1px solid var(--border)}
+.var-summary-item{font-size:11px;color:var(--muted)}
+.var-summary-item span{color:var(--text);font-weight:600;font-family:'DM Mono',monospace}
 </style>
 </head>
 <body>
@@ -240,6 +301,8 @@ kbd{background:var(--surface2);border:1px solid var(--border);border-radius:4px;
     <button class="tab active" onclick="switchTab('inventory',this)">📦 Inventory</button>
     <button class="tab" onclick="switchTab('addstock',this)">📥 Add Stock</button>
     <button class="tab" onclick="switchTab('deductstock',this)">📤 Deduct Stock</button>
+    <button class="tab" onclick="switchTab('monitor',this)">🔄 Stock Monitor</button>
+    <button class="tab" onclick="switchTab('variants',this)">🎨 Variants</button>
     <button class="tab" onclick="switchTab('charts',this)">📊 Charts</button>
     <button class="tab" onclick="switchTab('suppliers',this)">🏢 Suppliers</button>
     <button class="tab" onclick="switchTab('mva',this)">🏭 MVA</button>
@@ -420,6 +483,106 @@ kbd{background:var(--surface2);border:1px solid var(--border);border-radius:4px;
       </div>
     </div>
   </div>
+
+  <!-- STOCK MONITOR TAB -->
+  <div id="tab-monitor" class="hidden">
+    <div class="monitor-layout">
+      <div class="monitor-flow">
+        <div class="flow-title">🔄 Live Stock Monitoring Algorithm <span class="pulse-ring" style="color:var(--accent);font-size:11px;margin-left:6px">● LIVE</span></div>
+        <div class="flow-canvas" id="flow-canvas">
+          <svg class="flow-svg" id="flow-svg">
+            <defs>
+              <marker id="arrowhead" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+                <polygon points="0 0, 8 3, 0 6" fill="#2a3347"/>
+              </marker>
+            </defs>
+          </svg>
+        </div>
+      </div>
+      <div class="monitor-sidebar">
+        <div class="mon-card">
+          <div class="mon-card-title">📊 Algorithm Output — Right Now</div>
+          <div id="algo-output-list"></div>
+        </div>
+        <div class="mon-card">
+          <div class="mon-card-title">🔴 Out of Stock</div>
+          <div id="mon-out-list"><div style="color:var(--muted);font-size:12px">None</div></div>
+        </div>
+        <div class="mon-card">
+          <div class="mon-card-title">🟡 Low Stock — Reorder Now</div>
+          <div id="mon-low-list"><div style="color:var(--muted);font-size:12px">All good!</div></div>
+        </div>
+        <div class="mon-card">
+          <div class="mon-card-title">🟢 Healthy Stock</div>
+          <div id="mon-ok-list"><div style="color:var(--muted);font-size:12px">No items yet</div></div>
+        </div>
+        <div class="mon-card">
+          <div class="mon-card-title">⚙️ Algorithm Steps</div>
+          <div class="algo-step"><div class="algo-num">1</div><div>Scan all inventory items</div></div>
+          <div class="algo-step"><div class="algo-num">2</div><div>Check stock vs reorder point</div></div>
+          <div class="algo-step"><div class="algo-num">3</div><div>If stock = 0 → flag OUT</div></div>
+          <div class="algo-step"><div class="algo-num">4</div><div>If stock ≤ reorder → flag LOW</div></div>
+          <div class="algo-step"><div class="algo-num">5</div><div>If stock > reorder → flag OK</div></div>
+          <div class="algo-step"><div class="algo-num">6</div><div>Calculate suggested reorder qty</div></div>
+          <div class="algo-step"><div class="algo-num">7</div><div>Auto-alert &amp; sync to sheet</div></div>
+        </div>
+        <button class="btn btn-primary" style="width:100%;margin-top:4px" onclick="runMonitorAlgo()">▶ Run Algorithm Now</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- VARIANTS TAB -->
+  <div id="tab-variants" class="hidden">
+    <div class="var-layout">
+      <div class="var-form">
+        <div class="var-title">🎨 Add Product Variants</div>
+        <div style="margin-bottom:14px">
+          <label style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;display:block;margin-bottom:5px">Parent Product</label>
+          <select class="var-product-select" id="var-product-sel"><option value="">— Select a product —</option></select>
+        </div>
+        <div style="margin-bottom:14px">
+          <label style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;display:block;margin-bottom:8px">Variant Type</label>
+          <div style="display:flex;gap:7px;flex-wrap:wrap">
+            <button class="btn btn-ghost btn-sm var-type-btn" data-type="color" onclick="setVarType('color',this)" style="border-color:var(--accent);color:var(--accent)">🎨 Color</button>
+            <button class="btn btn-ghost btn-sm var-type-btn" data-type="size" onclick="setVarType('size',this)">📐 Size</button>
+            <button class="btn btn-ghost btn-sm var-type-btn" data-type="material" onclick="setVarType('material',this)">🧵 Material</button>
+            <button class="btn btn-ghost btn-sm var-type-btn" data-type="custom" onclick="setVarType('custom',this)">✏️ Custom</button>
+          </div>
+        </div>
+        <div id="var-custom-label-wrap" style="display:none;margin-bottom:14px">
+          <label style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;display:block;margin-bottom:5px">Variant Label</label>
+          <input class="var-attr-input" id="var-custom-label" placeholder="e.g. Flavour, Pack Size..." style="width:100%">
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr 70px 36px;gap:7px;margin-bottom:6px">
+          <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.3px">Value</div>
+          <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.3px">SKU Suffix</div>
+          <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.3px">Stock</div>
+          <div></div>
+        </div>
+        <div id="var-attrs-container"></div>
+        <button class="btn btn-ghost btn-sm" onclick="addVarAttrRow()" style="margin-top:7px;width:100%">+ Add Variant Row</button>
+        <div style="margin-top:16px;display:flex;gap:8px">
+          <button class="btn btn-primary" style="flex:1" onclick="saveVariants()">💾 Save Variants</button>
+          <button class="btn btn-ghost" onclick="clearVarForm()">Clear</button>
+        </div>
+        <div style="margin-top:18px;background:var(--surface2);border-radius:10px;padding:14px">
+          <div style="font-size:11px;color:var(--accent);font-weight:600;text-transform:uppercase;margin-bottom:9px">⚡ Quick Templates</div>
+          <div style="display:flex;gap:6px;flex-wrap:wrap">
+            <button class="btn btn-ghost btn-sm" onclick="applyTemplate('tshirt')">👕 T-Shirt Sizes</button>
+            <button class="btn btn-ghost btn-sm" onclick="applyTemplate('colors')">🌈 Basic Colors</button>
+            <button class="btn btn-ghost btn-sm" onclick="applyTemplate('shoes')">👟 Shoe Sizes</button>
+            <button class="btn btn-ghost btn-sm" onclick="applyTemplate('pack')">📦 Pack Sizes</button>
+          </div>
+        </div>
+      </div>
+      <div class="var-list">
+        <div class="var-title">📦 Products with Variants</div>
+        <div id="var-cards-container"><div style="color:var(--muted);font-size:13px;text-align:center;padding:40px 20px">No variants yet.<br>Select a product and add variants.</div></div>
+      </div>
+    </div>
+  </div>
+
+  <div id="tab-charts" class="hidden">
     <div class="cards-grid" style="grid-template-columns:2fr 1fr">
       <div class="card"><div class="card-title">📈 Stock Levels by Item</div><div class="chart-wrap"><canvas id="chart-stock"></canvas></div></div>
       <div class="card"><div class="card-title">🥧 Value by Segment</div><div class="chart-wrap"><canvas id="chart-pie"></canvas></div></div>
@@ -1155,10 +1318,15 @@ async function deleteSupplier(id){if(!confirm('Delete supplier?'))return;supplie
    ============================================================ */
 function switchTab(tab,btn){
   document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active')); btn.classList.add('active');
-  ['inventory','addstock','deductstock','charts','suppliers','mva','alerts','gst'].forEach(t=>document.getElementById('tab-'+t).classList.toggle('hidden',t!==tab));
-  if(tab==='charts')setTimeout(renderCharts,60); if(tab==='gst'){populateQuickAdd();updateBill()}
-  if(tab==='addstock'){setTimeout(()=>document.getElementById('add-barcode-input').focus(),100)}
-  if(tab==='deductstock'){setTimeout(()=>document.getElementById('deduct-barcode-input').focus(),100)}
+  ['inventory','addstock','deductstock','monitor','variants','charts','suppliers','mva','alerts','gst'].forEach(t=>{
+    const el=document.getElementById('tab-'+t); if(el) el.classList.toggle('hidden',t!==tab);
+  });
+  if(tab==='charts')setTimeout(renderCharts,60);
+  if(tab==='gst'){populateQuickAdd();updateBill();}
+  if(tab==='addstock'){setTimeout(()=>document.getElementById('add-barcode-input').focus(),100);}
+  if(tab==='deductstock'){setTimeout(()=>document.getElementById('deduct-barcode-input').focus(),100);}
+  if(tab==='monitor'){setTimeout(()=>{drawFlowChart();runMonitorAlgo();},80);}
+  if(tab==='variants'){populateVarProductSelect();renderVarCards();}
 }
 function showSheetsSetup(){document.getElementById('sheet-url-modal').value=SCRIPT_URL; document.getElementById('sheets-modal').classList.add('open');}
 function closeSheetsModal(){document.getElementById('sheets-modal').classList.remove('open');}
@@ -1241,6 +1409,270 @@ function updateBill(){
 function printBill(){window.print()}
 
 /* ============================================================
+   STOCK MONITOR FLOWCHART
+   ============================================================ */
+function drawFlowChart(){
+  const canvas = document.getElementById('flow-canvas');
+  const svg = document.getElementById('flow-svg');
+  if(!canvas||!svg) return;
+  canvas.innerHTML = '';
+  canvas.appendChild(svg);
+  svg.innerHTML = `<defs><marker id="arrowhead" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="#2a3347"/></marker></defs>`;
+
+  const out=items.filter(i=>getStatus(i)==='out').length;
+  const low=items.filter(i=>getStatus(i)==='low').length;
+  const ok=items.filter(i=>getStatus(i)==='ok').length;
+  const totalVal=items.reduce((s,i)=>s+i.stock*i.price,0);
+
+  // Node definitions: [id, x, y, label, sublabel, class]
+  const nodes = [
+    ['n-start',   205, 10,  'START',              'Monitor triggered',      'fn-start'],
+    ['n-load',    185, 85,  '📦 Load Inventory',  items.length+' items',    'fn-process'],
+    ['n-loop',    185, 165, '🔁 For Each Item',   'iterate all SKUs',       'fn-process'],
+    ['n-chk1',   175, 250, '❓ stock === 0?',     'Out of stock check',     'fn-decision'],
+    ['n-out',    20,  335, '🔴 Flag OUT',         out+' items',             'fn-action-red'],
+    ['n-chk2',   220, 335, '❓ stock ≤ reorder?', 'Low stock check',        'fn-decision'],
+    ['n-low',    75,  420, '🟡 Flag LOW',         low+' items',             'fn-action-yellow'],
+    ['n-ok',     295, 420, '🟢 Flag OK',          ok+' items',              'fn-action-green'],
+    ['n-reord',  50,  505, '📋 Calc Reorder Qty', 'max − stock',            'fn-action-blue'],
+    ['n-alert',  185, 505, '🔔 Send Alerts',      'notify team',            'fn-process'],
+    ['n-sync',   185, 585, '☁ Sync to Sheet',    '₹'+totalVal.toLocaleString('en-IN',{maximumFractionDigits:0}), 'fn-process'],
+    ['n-end',    205, 660, 'END',                 'cycle complete',          'fn-end'],
+  ];
+
+  nodes.forEach(([id,x,y,label,sub,cls])=>{
+    const div = document.createElement('div');
+    div.id=id; div.className='fn '+cls;
+    div.style.left=x+'px'; div.style.top=y+'px';
+    div.innerHTML=`<span>${label}</span><span class="fn-label">${sub}</span>`;
+    canvas.appendChild(div);
+  });
+
+  // Canvas size
+  canvas.style.height='720px';
+
+  // Arrows: [x1,y1,x2,y2, label]
+  setTimeout(()=>{
+    const arrows=[
+      ['n-start','n-load',''],
+      ['n-load','n-loop',''],
+      ['n-loop','n-chk1',''],
+      ['n-chk1','n-out','YES'],
+      ['n-chk1','n-chk2','NO'],
+      ['n-chk2','n-low','YES'],
+      ['n-chk2','n-ok','NO'],
+      ['n-out','n-reord',''],
+      ['n-low','n-reord',''],
+      ['n-reord','n-alert',''],
+      ['n-ok','n-alert',''],
+      ['n-alert','n-sync',''],
+      ['n-sync','n-end',''],
+    ];
+    arrows.forEach(([a,b,lbl])=>{
+      const elA=document.getElementById(a), elB=document.getElementById(b);
+      if(!elA||!elB) return;
+      const ax=elA.offsetLeft+elA.offsetWidth/2, ay=elA.offsetTop+elA.offsetHeight;
+      const bx=elB.offsetLeft+elB.offsetWidth/2, by=elB.offsetTop;
+      const path=document.createElementNS('http://www.w3.org/2000/svg','path');
+      const mx=(ax+bx)/2, my=(ay+by)/2;
+      path.setAttribute('d',`M${ax},${ay} C${ax},${my} ${bx},${my} ${bx},${by}`);
+      path.setAttribute('stroke','#2a3347');
+      path.setAttribute('stroke-width','1.8');
+      path.setAttribute('fill','none');
+      path.setAttribute('marker-end','url(#arrowhead)');
+      svg.appendChild(path);
+      if(lbl){
+        const txt=document.createElementNS('http://www.w3.org/2000/svg','text');
+        txt.setAttribute('x',mx+4); txt.setAttribute('y',my-3);
+        txt.setAttribute('fill','#7a8ba0'); txt.setAttribute('font-size','10');
+        txt.setAttribute('font-family','DM Sans,sans-serif');
+        txt.textContent=lbl; svg.appendChild(txt);
+      }
+    });
+    svg.setAttribute('viewBox',`0 0 ${canvas.offsetWidth} 730`);
+  },120);
+}
+
+function runMonitorAlgo(){
+  const out=items.filter(i=>getStatus(i)==='out');
+  const low=items.filter(i=>getStatus(i)==='low');
+  const ok=items.filter(i=>getStatus(i)==='ok');
+
+  // Output summary
+  const outEl=document.getElementById('algo-output-list');
+  if(outEl) outEl.innerHTML=[
+    ['Total Items',items.length,'var(--text)'],
+    ['Out of Stock',out.length,'var(--danger)'],
+    ['Low Stock',low.length,'var(--warn)'],
+    ['Healthy',ok.length,'var(--accent)'],
+    ['Total Value','₹'+items.reduce((s,i)=>s+i.stock*i.price,0).toLocaleString('en-IN',{maximumFractionDigits:0}),'var(--blue)'],
+  ].map(([l,v,c])=>`<div class="card-row"><span class="card-label">${l}</span><span class="card-val" style="color:${c}">${v}</span></div>`).join('');
+
+  const monItem=(i,extra='')=>`<div class="mon-item">
+    <div class="mon-dot" style="background:${getStatus(i)==='out'?'var(--danger)':getStatus(i)==='low'?'var(--warn)':'var(--accent)'}"></div>
+    <div class="mon-name">${i.name}<div style="font-size:10px;color:var(--muted);font-family:'DM Mono',monospace">${i.sku}${extra}</div></div>
+    <div class="mon-stock" style="color:${getStatus(i)==='out'?'var(--danger)':getStatus(i)==='low'?'var(--warn)':'var(--accent)'}">${i.stock}</div>
+  </div>`;
+
+  const outListEl=document.getElementById('mon-out-list');
+  if(outListEl) outListEl.innerHTML=out.length?out.map(i=>monItem(i)).join(''):'<div style="color:var(--muted);font-size:12px">🎉 None out of stock</div>';
+
+  const lowListEl=document.getElementById('mon-low-list');
+  if(lowListEl) lowListEl.innerHTML=low.length?low.map(i=>monItem(i,` · reorder ${i.maxCapacity-i.stock}`)).join(''):'<div style="color:var(--muted);font-size:12px">✅ All above reorder point</div>';
+
+  const okListEl=document.getElementById('mon-ok-list');
+  if(okListEl) okListEl.innerHTML=ok.length?ok.slice(0,5).map(i=>monItem(i)).join('')+(ok.length>5?`<div style="color:var(--muted);font-size:11px;padding:6px 0">+${ok.length-5} more healthy items</div>`:''):'<div style="color:var(--muted);font-size:12px">No items yet</div>';
+
+  drawFlowChart();
+  toast('🔄','Monitor algorithm ran — results updated!');
+}
+
+/* ============================================================
+   PRODUCT VARIANTS
+   ============================================================ */
+let variants = JSON.parse(localStorage.getItem('sf_variants')||'{}');
+// variants = { itemId: { type, label, attrs:[{value,skuSuffix,stock,color}] } }
+let currentVarType = 'color';
+
+function setVarType(type, btn){
+  currentVarType = type;
+  document.querySelectorAll('.var-type-btn').forEach(b=>{ b.style.borderColor=''; b.style.color=''; });
+  btn.style.borderColor='var(--accent)'; btn.style.color='var(--accent)';
+  document.getElementById('var-custom-label-wrap').style.display = type==='custom'?'block':'none';
+}
+
+function populateVarProductSelect(){
+  const sel = document.getElementById('var-product-sel');
+  const cur = sel.value;
+  sel.innerHTML='<option value="">— Select a product —</option>'+
+    items.map(i=>`<option value="${i.id}" ${variants[i.id]?'':''}>${i.name} (${i.sku})${variants[i.id]?' ✓':''}</option>`).join('');
+  sel.value = cur;
+}
+
+function addVarAttrRow(val='', sku='', stock=0, color='#00e5a0'){
+  const container = document.getElementById('var-attrs-container');
+  const row = document.createElement('div');
+  row.className='var-attr-row';
+  const isColor = currentVarType==='color';
+  row.innerHTML=`
+    <input class="var-attr-input" placeholder="${currentVarType==='size'?'e.g. S, M, L, XL':currentVarType==='color'?'e.g. Red, Blue':'Value'}" value="${val}">
+    <input class="var-attr-input" placeholder="suffix e.g. -RED" value="${sku}">
+    <input class="var-attr-input" type="number" min="0" placeholder="Stock" value="${stock}" style="text-align:center">
+    ${isColor?`<input type="color" class="color-dot-input" value="${color}" title="Pick color">`:
+      `<button class="var-del-btn" onclick="this.parentElement.remove()">✕</button>`}
+  `;
+  if(isColor){
+    // append delete after color picker
+    const del=document.createElement('button');
+    del.className='var-del-btn'; del.textContent='✕';
+    del.onclick=()=>row.remove();
+    row.style.gridTemplateColumns='1fr 1fr 70px 36px 36px';
+    row.appendChild(del);
+  }
+  container.appendChild(row);
+}
+
+function saveVariants(){
+  const pid = document.getElementById('var-product-sel').value;
+  if(!pid){ toast('⚠️','Select a product first'); return; }
+  const rows = document.querySelectorAll('#var-attrs-container .var-attr-row');
+  if(!rows.length){ toast('⚠️','Add at least one variant row'); return; }
+  const label = currentVarType==='custom'?document.getElementById('var-custom-label').value||'Variant':currentVarType;
+  const attrs=[];
+  rows.forEach(row=>{
+    const inputs=row.querySelectorAll('input');
+    const val=inputs[0].value.trim();
+    const sfx=inputs[1].value.trim();
+    const stk=parseInt(inputs[2].value)||0;
+    const col=inputs[3]&&inputs[3].type==='color'?inputs[3].value:'#00e5a0';
+    if(val) attrs.push({value:val, skuSuffix:sfx, stock:stk, color:col});
+  });
+  if(!attrs.length){ toast('⚠️','Enter at least one variant value'); return; }
+  variants[pid]={type:currentVarType, label, attrs};
+  localStorage.setItem('sf_variants', JSON.stringify(variants));
+  renderVarCards();
+  populateVarProductSelect();
+  toast('✅','Variants saved!');
+}
+
+function clearVarForm(){
+  document.getElementById('var-product-sel').value='';
+  document.getElementById('var-attrs-container').innerHTML='';
+  addVarAttrRow(); addVarAttrRow(); addVarAttrRow();
+}
+
+function applyTemplate(tpl){
+  document.getElementById('var-attrs-container').innerHTML='';
+  const templates={
+    tshirt:[['XS','-XS',0,'#5eb8ff'],['S','-S',0,'#00e5a0'],['M','-M',0,'#ffd166'],['L','-L',0,'#ff6b35'],['XL','-XL',0,'#ff4757'],['XXL','-XXL',0,'#c084fc']],
+    colors:[['Red','-RED',0,'#ff4757'],['Blue','-BLU',0,'#5eb8ff'],['Green','-GRN',0,'#34a853'],['Black','-BLK',0,'#222'],['White','-WHT',0,'#e8edf5'],['Yellow','-YLW',0,'#ffd166']],
+    shoes:[['6','-6',0,'#5eb8ff'],['7','-7',0,'#5eb8ff'],['8','-8',0,'#00e5a0'],['9','-9',0,'#00e5a0'],['10','-10',0,'#ffd166'],['11','-11',0,'#ff6b35']],
+    pack:[['Single','-S1',0,'#00e5a0'],['Pack of 3','-P3',0,'#5eb8ff'],['Pack of 6','-P6',0,'#ffd166'],['Pack of 12','-P12',0,'#ff6b35'],['Bulk 50','-B50',0,'#c084fc']]
+  };
+  const rows=templates[tpl]||[];
+  const prevType=currentVarType;
+  if(tpl==='tshirt'||tpl==='shoes') setVarType('size',document.querySelector('[data-type="size"]'));
+  else if(tpl==='colors') setVarType('color',document.querySelector('[data-type="color"]'));
+  else setVarType('pack',document.querySelector('[data-type="custom"]')||document.querySelector('.var-type-btn'));
+  rows.forEach(([v,s,st,c])=>addVarAttrRow(v,s,st,c));
+}
+
+function renderVarCards(){
+  const container=document.getElementById('var-cards-container');
+  const keys=Object.keys(variants);
+  if(!keys.length){ container.innerHTML='<div style="color:var(--muted);font-size:13px;text-align:center;padding:40px 20px">No variants yet.<br>Select a product and add variants.</div>'; return; }
+  container.innerHTML=keys.map(pid=>{
+    const item=items.find(i=>i.id==pid);
+    if(!item) return '';
+    const v=variants[pid];
+    const totalStock=v.attrs.reduce((s,a)=>s+a.stock,0);
+    const totalVal=totalStock*item.price;
+    const chips=v.attrs.map(a=>{
+      const pct=a.stock/(item.maxCapacity||100);
+      const statusColor=a.stock===0?'var(--danger)':a.stock<=item.reorderPoint?'var(--warn)':'var(--accent)';
+      const bgColor=v.type==='color'?a.color+'22':'var(--surface)';
+      const borderColor=v.type==='color'?a.color:statusColor;
+      return`<div class="var-chip" style="background:${bgColor};border-color:${borderColor}">
+        ${v.type==='color'?`<span class="var-chip-color" style="background:${a.color}"></span>`:''}
+        <span>${a.value}</span>
+        ${a.skuSuffix?`<span style="font-size:10px;color:var(--muted);display:block;font-family:'DM Mono',monospace">${a.skuSuffix}</span>`:''}
+        <div class="var-chip-stock">${a.stock} units</div>
+        <div class="var-chip-status" style="background:${statusColor}"></div>
+      </div>`;
+    }).join('');
+    return`<div class="var-card">
+      <div class="var-card-header">
+        <div>
+          <div class="var-card-name">${item.name}</div>
+          <div style="font-size:11px;color:var(--muted);font-family:'DM Mono',monospace">${item.sku} · ${v.label} variants</div>
+        </div>
+        <button class="btn btn-ghost btn-sm" onclick="editVariant(${pid})">✏️ Edit</button>
+      </div>
+      <div class="var-grid">${chips}</div>
+      <div class="var-summary">
+        <div class="var-summary-item">Variants: <span>${v.attrs.length}</span></div>
+        <div class="var-summary-item">Total Stock: <span>${totalStock}</span></div>
+        <div class="var-summary-item">Value: <span>₹${totalVal.toLocaleString('en-IN',{maximumFractionDigits:0})}</span></div>
+        <div class="var-summary-item">Out of Stock: <span style="color:var(--danger)">${v.attrs.filter(a=>a.stock===0).length}</span></div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function editVariant(pid){
+  document.getElementById('var-product-sel').value=pid;
+  const v=variants[pid];
+  if(!v) return;
+  setVarType(v.type, document.querySelector(`[data-type="${v.type}"]`)||document.querySelector('.var-type-btn'));
+  if(v.type==='custom'){
+    document.getElementById('var-custom-label-wrap').style.display='block';
+    document.getElementById('var-custom-label').value=v.label;
+  }
+  document.getElementById('var-attrs-container').innerHTML='';
+  v.attrs.forEach(a=>addVarAttrRow(a.value,a.skuSuffix,a.stock,a.color||'#00e5a0'));
+}
+
+/* ============================================================
    START APP
    ============================================================ */
 async function init() {
@@ -1250,8 +1682,11 @@ async function init() {
   document.getElementById('g-inv-date').value = new Date().toISOString().split('T')[0];
   const fd = new Date(); fd.setDate(fd.getDate()+30);
   document.getElementById('g-due-date').value = fd.toISOString().split('T')[0];
+
+  // Init variants form with 3 empty rows
+  addVarAttrRow(); addVarAttrRow(); addVarAttrRow();
   
-  render(); // Local render first
+  render();
 
   if (SCRIPT_URL) {
     document.getElementById('sheet-url-input').value = SCRIPT_URL;
