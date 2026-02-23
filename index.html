@@ -553,9 +553,10 @@ kbd{background:var(--surface2);border:1px solid var(--border);border-radius:4px;
           <label style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;display:block;margin-bottom:5px">Variant Label</label>
           <input class="var-attr-input" id="var-custom-label" placeholder="e.g. Flavour, Pack Size..." style="width:100%">
         </div>
-        <div style="display:grid;grid-template-columns:1fr 1fr 70px 36px;gap:7px;margin-bottom:6px">
+        <div style="display:grid;grid-template-columns:1.2fr 0.8fr 1fr 70px 36px;gap:7px;margin-bottom:6px">
           <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.3px">Value</div>
           <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.3px">SKU Suffix</div>
+          <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.3px">Barcode</div>
           <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.3px">Stock</div>
           <div></div>
         </div>
@@ -940,7 +941,6 @@ function processBarcodeScan(mode) {
   const barcode  = inputEl.value.trim();
   const qty      = parseInt(qtyEl.value) || 1;
 
-  // Hide previous results
   document.getElementById(mode+'-result-card').classList.remove('show');
   document.getElementById(mode+'-not-found').classList.remove('show');
   if(mode==='deduct') document.getElementById('deduct-warn').style.display='none';
@@ -948,10 +948,25 @@ function processBarcodeScan(mode) {
   if(!barcode){ toast('⚠️','Please enter or scan a barcode'); inputEl.focus(); return; }
   if(qty < 1){ toast('⚠️','Quantity must be at least 1'); return; }
 
-  // Look up item by barcode OR sku (fallback)
-  const item = items.find(i => (i.barcode && i.barcode === barcode) || i.sku === barcode);
+  // ── 1. Try matching a VARIANT first (by skuSuffix barcode or full SKU) ──
+  let matchedVariant = null, matchedVarParent = null, matchedVarIdx = -1;
+  for (const [pid, vData] of Object.entries(variants)) {
+    vData.attrs.forEach((attr, idx) => {
+      const varSku = (items.find(i=>i.id==pid)?.sku||'') + (attr.skuSuffix||'');
+      if (attr.barcode === barcode || varSku === barcode) {
+        matchedVariant   = attr;
+        matchedVarParent = items.find(i=>i.id==pid);
+        matchedVarIdx    = idx;
+        matchedVarPid    = pid;
+      }
+    });
+    if(matchedVariant) break;
+  }
 
-  if(!item){
+  // ── 2. Fallback: try matching a parent item ──
+  const item = matchedVarParent || items.find(i => (i.barcode && i.barcode === barcode) || i.sku === barcode);
+
+  if(!item && !matchedVariant){
     lastNotFoundBarcode = barcode;
     document.getElementById(mode+'-not-found').classList.add('show');
     document.getElementById(mode+'-not-found-code').textContent = 'Scanned: ' + barcode;
@@ -960,70 +975,91 @@ function processBarcodeScan(mode) {
     return;
   }
 
+  // ── 3. Apply stock change ──
   const before = item.stock;
+  let variantBefore = matchedVariant ? matchedVariant.stock : null;
+  let resultLabel = item.name;
+  let variantNote = '';
 
-  if(mode === 'add'){
+  if (mode === 'add') {
     item.stock += qty;
-    const after = item.stock;
-
-    // Update result card
-    document.getElementById('add-result-name').textContent = item.name;
-    document.getElementById('add-result-sku').textContent  = item.sku + (item.barcode?' · '+item.barcode:'');
-    document.getElementById('add-before').textContent = before;
-    document.getElementById('add-delta').textContent  = '+'+qty;
-    document.getElementById('add-after').textContent  = after;
-    document.getElementById('add-result-card').classList.add('show');
-
-    addToScanHistory('add', item, qty, before, after);
-    toast('✅', `+${qty} added → ${item.name} now has ${after}`);
-
+    if (matchedVariant) {
+      matchedVariant.stock += qty;
+      variantNote = ` (${matchedVariant.value} variant +${qty})`;
+    }
   } else {
-    if(qty > before){
-      toast('⚠️','Cannot deduct more than current stock ('+before+')');
-      // Show warning but still allow proceeding
+    if (qty > item.stock) {
       document.getElementById('deduct-warn').style.display='block';
-      document.getElementById('deduct-warn-msg').textContent = `Only ${before} in stock, cannot deduct ${qty}.`;
+      document.getElementById('deduct-warn-msg').textContent = `Only ${item.stock} in stock, cannot deduct ${qty}.`;
       inputEl.value=''; inputEl.focus();
       return;
     }
-
     item.stock -= qty;
-    const after = item.stock;
-
-    // Update result card
-    document.getElementById('deduct-result-name').textContent = item.name;
-    document.getElementById('deduct-result-sku').textContent  = item.sku + (item.barcode?' · '+item.barcode:'');
-    document.getElementById('deduct-before').textContent = before;
-    document.getElementById('deduct-delta').textContent  = '-'+qty;
-    document.getElementById('deduct-after').textContent  = after;
-    document.getElementById('deduct-after').style.color  = after <= item.reorderPoint ? 'var(--danger)' : 'var(--accent)';
-    document.getElementById('deduct-result-card').classList.add('show');
-
-    // Low stock warning after deduct
-    if(after <= item.reorderPoint && after > 0){
-      document.getElementById('deduct-warn').style.display='block';
-      document.getElementById('deduct-warn-msg').textContent = `${item.name} is now low (${after} left, reorder point: ${item.reorderPoint})`;
-    } else if(after === 0){
-      document.getElementById('deduct-warn').style.display='block';
-      document.getElementById('deduct-warn-msg').textContent = `${item.name} is now OUT OF STOCK!`;
+    if (matchedVariant) {
+      const varStock = matchedVariant.stock;
+      matchedVariant.stock = Math.max(0, varStock - qty);
+      variantNote = ` (${matchedVariant.value} variant -${qty})`;
     }
-
-    addToScanHistory('deduct', item, qty, before, after);
-    toast('✅', `-${qty} deducted → ${item.name} now has ${after}`);
   }
 
-  // Reset input, re-render, auto-sync
+  const after = item.stock;
+
+  // ── 4. Update variant in variants object ──
+  if (matchedVariant && matchedVarPid !== undefined) {
+    variants[matchedVarPid].attrs[matchedVarIdx] = matchedVariant;
+    localStorage.setItem('sf_variants', JSON.stringify(variants));
+    renderVarCards();
+  }
+
+  // ── 5. Show result card ──
+  const isAdd = mode === 'add';
+  document.getElementById(mode+'-result-name').textContent = item.name + variantNote;
+  document.getElementById(mode+'-result-sku').textContent  = item.sku + (item.barcode?' · '+item.barcode:'') + (matchedVariant?' → Variant: '+matchedVariant.value:'');
+  document.getElementById(mode+'-before').textContent = before;
+  document.getElementById(mode+'-delta').textContent  = (isAdd?'+':'-')+qty;
+  document.getElementById(mode+'-after').textContent  = after;
+  if(!isAdd) document.getElementById('deduct-after').style.color = after <= item.reorderPoint ? 'var(--danger)' : 'var(--accent)';
+  document.getElementById(mode+'-result-card').classList.add('show');
+
+  // ── 6. Low/out stock warning ──
+  if(!isAdd){
+    if(after === 0){
+      document.getElementById('deduct-warn').style.display='block';
+      document.getElementById('deduct-warn-msg').textContent = `${item.name} is now OUT OF STOCK!`;
+    } else if(after <= item.reorderPoint){
+      document.getElementById('deduct-warn').style.display='block';
+      document.getElementById('deduct-warn-msg').textContent = `${item.name} is now low (${after} left, reorder point: ${item.reorderPoint})`;
+    }
+  }
+
+  // ── 7. Build scan log entry ──
+  const scanLog = {
+    timestamp : new Date().toISOString(),
+    mode,
+    name     : item.name + (matchedVariant?' ['+matchedVariant.value+']':''),
+    sku      : item.sku + (matchedVariant?matchedVariant.skuSuffix:''),
+    barcode  : barcode,
+    qty,
+    before,
+    after,
+    variantValue : matchedVariant ? matchedVariant.value : '',
+    parentSku    : item.sku
+  };
+
+  addToScanHistory(mode, item, qty, before, after, matchedVariant);
+  toast('✅', `${isAdd?'+':'-'}${qty}${variantNote} → ${item.name} stock: ${after}`);
+
   inputEl.value = '';
   qtyEl.value = 1;
   inputEl.focus();
   render();
-  syncToSheet();
+  syncToSheet(scanLog);
 }
 
-function addToScanHistory(mode, item, qty, before, after){
+function addToScanHistory(mode, item, qty, before, after, variant=null){
   const now = new Date();
   const timeStr = now.toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
-  scanHistory.unshift({mode, name:item.name, sku:item.sku, qty, before, after, time:timeStr});
+  scanHistory.unshift({mode, name:item.name, sku:item.sku, qty, before, after, time:timeStr, variant:variant?variant.value:null});
   if(scanHistory.length > 50) scanHistory.pop();
   renderScanHistory(mode);
 }
@@ -1036,9 +1072,10 @@ function renderScanHistory(mode){
     const badge = h.mode==='add'
       ? `<span class="scan-hist-badge scan-hist-add">+${h.qty}</span>`
       : `<span class="scan-hist-badge scan-hist-deduct">-${h.qty}</span>`;
+    const varTag = h.variant ? `<span style="background:var(--surface);border:1px solid var(--border);border-radius:4px;padding:1px 6px;font-size:10px;margin-left:4px;color:var(--accent)">${h.variant}</span>` : '';
     return `<div class="scan-hist-item">
       ${badge}
-      <div class="scan-hist-info"><strong>${h.name}</strong> <span style="color:var(--muted);font-size:11px">${h.sku}</span><br><span style="color:var(--muted);font-size:12px">${h.before} → ${h.after}</span></div>
+      <div class="scan-hist-info"><strong>${h.name}</strong>${varTag} <span style="color:var(--muted);font-size:11px">${h.sku}</span><br><span style="color:var(--muted);font-size:12px">${h.before} → ${h.after}</span></div>
       <div class="scan-hist-time">${h.time}</div>
     </div>`;
   }).join('');
@@ -1112,15 +1149,20 @@ async function loadFromSheet() {
     const data = await res.json();
     if (data.items) items = data.items.map(i => ({...i, id: Number(i.id), stock: Number(i.stock), price: Number(i.price), maxCapacity: Number(i.maxCapacity), reorderPoint: Number(i.reorderPoint), gstRate: Number(i.gstRate)}));
     if (data.suppliers) suppliers = data.suppliers.map(s => ({...s, id: Number(s.id)}));
-    
+    // Load variants from sheet (stored as JSON blob)
+    if (data.variants && typeof data.variants === 'object') {
+      variants = data.variants;
+      localStorage.setItem('sf_variants', JSON.stringify(variants));
+    }
+
     nextId = items.length > 0 ? Math.max(...items.map(i=>i.id)) + 1 : 1;
     nextSupId = suppliers.length > 0 ? Math.max(...suppliers.map(s=>s.id)) + 1 : 1;
-    
+
     localStorage.setItem('sf_v3', JSON.stringify(items));
     localStorage.setItem('sf_sup_v3', JSON.stringify(suppliers));
     updateLastSync();
     render();
-    toast('✅', `Loaded successfully`);
+    toast('✅', 'Loaded successfully');
   } catch (e) {
     toast('❌', 'Failed to load from Sheets');
   } finally {
@@ -1128,24 +1170,27 @@ async function loadFromSheet() {
   }
 }
 
-async function syncToSheet() {
+async function syncToSheet(scanLog=null) {
   localStorage.setItem('sf_v3', JSON.stringify(items));
   localStorage.setItem('sf_sup_v3', JSON.stringify(suppliers));
-  
-  if (!SCRIPT_URL || !isConnected) return; // Works locally if not connected
+  localStorage.setItem('sf_variants', JSON.stringify(variants));
+
+  if (!SCRIPT_URL || !isConnected) return;
 
   try {
     setSyncState('syncing', 'Syncing to cloud...');
+    const payload = { items, suppliers, variants };
+    if (scanLog) payload.scanLog = scanLog;
     await fetch(SCRIPT_URL, {
       method: 'POST',
-      headers: { 'Content-Type': 'text/plain;charset=utf-8' }, // Prevent CORS preflight
-      body: JSON.stringify({ items: items, suppliers: suppliers })
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify(payload)
     });
     updateLastSync();
-    setSyncState('connected', `Connected`);
+    setSyncState('connected', 'Connected');
   } catch(e) {
     setSyncState('error', 'Sync failed! Saved locally.');
-    console.error("Sync error:", e);
+    console.error('Sync error:', e);
   }
 }
 
@@ -1549,26 +1594,21 @@ function populateVarProductSelect(){
   sel.value = cur;
 }
 
-function addVarAttrRow(val='', sku='', stock=0, color='#00e5a0'){
+function addVarAttrRow(val='', skuSuffix='', stock=0, color='#00e5a0', barcode=''){
   const container = document.getElementById('var-attrs-container');
   const row = document.createElement('div');
   row.className='var-attr-row';
   const isColor = currentVarType==='color';
+  // grid: value | skuSuffix | barcode | stock | colorpicker? | del
+  row.style.gridTemplateColumns = isColor ? '1.2fr 0.8fr 1fr 70px 36px 36px' : '1.2fr 0.8fr 1fr 70px 36px';
   row.innerHTML=`
-    <input class="var-attr-input" placeholder="${currentVarType==='size'?'e.g. S, M, L, XL':currentVarType==='color'?'e.g. Red, Blue':'Value'}" value="${val}">
-    <input class="var-attr-input" placeholder="suffix e.g. -RED" value="${sku}">
+    <input class="var-attr-input" placeholder="${currentVarType==='size'?'e.g. S, M, L':currentVarType==='color'?'e.g. Red, Blue':'Value'}" value="${val}">
+    <input class="var-attr-input" placeholder="-RED" value="${skuSuffix}">
+    <input class="var-attr-input" placeholder="Barcode / EAN" value="${barcode}">
     <input class="var-attr-input" type="number" min="0" placeholder="Stock" value="${stock}" style="text-align:center">
-    ${isColor?`<input type="color" class="color-dot-input" value="${color}" title="Pick color">`:
-      `<button class="var-del-btn" onclick="this.parentElement.remove()">✕</button>`}
+    ${isColor?`<input type="color" class="color-dot-input" value="${color}" title="Pick color">`:''}
+    <button class="var-del-btn" onclick="this.closest('.var-attr-row').remove()">✕</button>
   `;
-  if(isColor){
-    // append delete after color picker
-    const del=document.createElement('button');
-    del.className='var-del-btn'; del.textContent='✕';
-    del.onclick=()=>row.remove();
-    row.style.gridTemplateColumns='1fr 1fr 70px 36px 36px';
-    row.appendChild(del);
-  }
   container.appendChild(row);
 }
 
@@ -1577,22 +1617,35 @@ function saveVariants(){
   if(!pid){ toast('⚠️','Select a product first'); return; }
   const rows = document.querySelectorAll('#var-attrs-container .var-attr-row');
   if(!rows.length){ toast('⚠️','Add at least one variant row'); return; }
-  const label = currentVarType==='custom'?document.getElementById('var-custom-label').value||'Variant':currentVarType;
+  const label = currentVarType==='custom'
+    ? (document.getElementById('var-custom-label').value||'Variant')
+    : currentVarType;
   const attrs=[];
   rows.forEach(row=>{
-    const inputs=row.querySelectorAll('input');
-    const val=inputs[0].value.trim();
-    const sfx=inputs[1].value.trim();
-    const stk=parseInt(inputs[2].value)||0;
-    const col=inputs[3]&&inputs[3].type==='color'?inputs[3].value:'#00e5a0';
-    if(val) attrs.push({value:val, skuSuffix:sfx, stock:stk, color:col});
+    const inputs = row.querySelectorAll('input');
+    const val       = inputs[0].value.trim();
+    const sfx       = inputs[1].value.trim();
+    const bc        = inputs[2].value.trim();
+    const stk       = parseInt(inputs[3].value)||0;
+    const col       = inputs[4]&&inputs[4].type==='color' ? inputs[4].value : '#00e5a0';
+    if(val) attrs.push({value:val, skuSuffix:sfx, barcode:bc, stock:stk, color:col});
   });
   if(!attrs.length){ toast('⚠️','Enter at least one variant value'); return; }
-  variants[pid]={type:currentVarType, label, attrs};
+
+  variants[pid] = {type:currentVarType, label, attrs};
+
+  // Also update parent item total stock = sum of all variant stocks
+  const parentItem = items.find(i=>i.id==pid);
+  if(parentItem){
+    parentItem.stock = attrs.reduce((s,a)=>s+a.stock, 0);
+  }
+
   localStorage.setItem('sf_variants', JSON.stringify(variants));
   renderVarCards();
   populateVarProductSelect();
-  toast('✅','Variants saved!');
+  render();
+  syncToSheet(); // ← Save to Google Sheet
+  toast('✅','Variants saved & synced to sheet!');
 }
 
 function clearVarForm(){
@@ -1604,39 +1657,99 @@ function clearVarForm(){
 function applyTemplate(tpl){
   document.getElementById('var-attrs-container').innerHTML='';
   const templates={
-    tshirt:[['XS','-XS',0,'#5eb8ff'],['S','-S',0,'#00e5a0'],['M','-M',0,'#ffd166'],['L','-L',0,'#ff6b35'],['XL','-XL',0,'#ff4757'],['XXL','-XXL',0,'#c084fc']],
-    colors:[['Red','-RED',0,'#ff4757'],['Blue','-BLU',0,'#5eb8ff'],['Green','-GRN',0,'#34a853'],['Black','-BLK',0,'#222'],['White','-WHT',0,'#e8edf5'],['Yellow','-YLW',0,'#ffd166']],
-    shoes:[['6','-6',0,'#5eb8ff'],['7','-7',0,'#5eb8ff'],['8','-8',0,'#00e5a0'],['9','-9',0,'#00e5a0'],['10','-10',0,'#ffd166'],['11','-11',0,'#ff6b35']],
-    pack:[['Single','-S1',0,'#00e5a0'],['Pack of 3','-P3',0,'#5eb8ff'],['Pack of 6','-P6',0,'#ffd166'],['Pack of 12','-P12',0,'#ff6b35'],['Bulk 50','-B50',0,'#c084fc']]
+    tshirt:[['XS','-XS','',0,'#5eb8ff'],['S','-S','',0,'#00e5a0'],['M','-M','',0,'#ffd166'],['L','-L','',0,'#ff6b35'],['XL','-XL','',0,'#ff4757'],['XXL','-XXL','',0,'#c084fc']],
+    colors:[['Red','-RED','',0,'#ff4757'],['Blue','-BLU','',0,'#5eb8ff'],['Green','-GRN','',0,'#34a853'],['Black','-BLK','',0,'#222'],['White','-WHT','',0,'#e8edf5'],['Yellow','-YLW','',0,'#ffd166']],
+    shoes:[['6','-6','',0,'#5eb8ff'],['7','-7','',0,'#5eb8ff'],['8','-8','',0,'#00e5a0'],['9','-9','',0,'#00e5a0'],['10','-10','',0,'#ffd166'],['11','-11','',0,'#ff6b35']],
+    pack:[['Single','-S1','',0,'#00e5a0'],['Pack of 3','-P3','',0,'#5eb8ff'],['Pack of 6','-P6','',0,'#ffd166'],['Pack of 12','-P12','',0,'#ff6b35'],['Bulk 50','-B50','',0,'#c084fc']]
   };
   const rows=templates[tpl]||[];
-  const prevType=currentVarType;
   if(tpl==='tshirt'||tpl==='shoes') setVarType('size',document.querySelector('[data-type="size"]'));
   else if(tpl==='colors') setVarType('color',document.querySelector('[data-type="color"]'));
-  else setVarType('pack',document.querySelector('[data-type="custom"]')||document.querySelector('.var-type-btn'));
-  rows.forEach(([v,s,st,c])=>addVarAttrRow(v,s,st,c));
+  else { setVarType('custom',document.querySelector('[data-type="custom"]')); }
+  rows.forEach(([v,s,b,st,c])=>addVarAttrRow(v,s,st,c,b));
+}
+
+function editVariant(pid){
+  document.getElementById('var-product-sel').value=pid;
+  const v=variants[pid];
+  if(!v) return;
+  const btn = document.querySelector(`[data-type="${v.type}"]`) || document.querySelector('.var-type-btn');
+  setVarType(v.type, btn);
+  if(v.type==='custom'){
+    document.getElementById('var-custom-label-wrap').style.display='block';
+    document.getElementById('var-custom-label').value=v.label;
+  }
+  document.getElementById('var-attrs-container').innerHTML='';
+  v.attrs.forEach(a=>addVarAttrRow(a.value, a.skuSuffix||'', a.stock, a.color||'#00e5a0', a.barcode||''));
+}
+
+// Inline +/- stock update directly on variant card
+function variantAdjustStock(pid, attrIdx, delta){
+  if(!variants[pid]) return;
+  const attr = variants[pid].attrs[attrIdx];
+  if(!attr) return;
+  const newStock = Math.max(0, attr.stock + delta);
+  const oldStock = attr.stock;
+  attr.stock = newStock;
+
+  // Update parent item stock = sum of all variant stocks
+  const parentItem = items.find(i=>i.id==pid);
+  if(parentItem){
+    const oldParentStock = parentItem.stock;
+    parentItem.stock = variants[pid].attrs.reduce((s,a)=>s+a.stock, 0);
+  }
+
+  localStorage.setItem('sf_variants', JSON.stringify(variants));
+
+  const mode   = delta > 0 ? 'add' : 'deduct';
+  const absQty = Math.abs(delta);
+  const scanLog = {
+    timestamp    : new Date().toISOString(),
+    mode,
+    name         : (parentItem?.name||'') + ' ['+attr.value+']',
+    sku          : (parentItem?.sku||'') + (attr.skuSuffix||''),
+    barcode      : attr.barcode||'',
+    qty          : absQty,
+    before       : oldStock,
+    after        : newStock,
+    variantValue : attr.value,
+    parentSku    : parentItem?.sku||''
+  };
+
+  renderVarCards();
+  render();
+  syncToSheet(scanLog);
+  toast(delta>0?'✅':'📤', `${attr.value}: ${oldStock} → ${newStock}`);
 }
 
 function renderVarCards(){
   const container=document.getElementById('var-cards-container');
+  if(!container) return;
   const keys=Object.keys(variants);
-  if(!keys.length){ container.innerHTML='<div style="color:var(--muted);font-size:13px;text-align:center;padding:40px 20px">No variants yet.<br>Select a product and add variants.</div>'; return; }
+  if(!keys.length){
+    container.innerHTML='<div style="color:var(--muted);font-size:13px;text-align:center;padding:40px 20px">No variants yet.<br>Select a product and add variants.</div>';
+    return;
+  }
   container.innerHTML=keys.map(pid=>{
     const item=items.find(i=>i.id==pid);
     if(!item) return '';
     const v=variants[pid];
     const totalStock=v.attrs.reduce((s,a)=>s+a.stock,0);
     const totalVal=totalStock*item.price;
-    const chips=v.attrs.map(a=>{
-      const pct=a.stock/(item.maxCapacity||100);
+    const chips=v.attrs.map((a,idx)=>{
       const statusColor=a.stock===0?'var(--danger)':a.stock<=item.reorderPoint?'var(--warn)':'var(--accent)';
-      const bgColor=v.type==='color'?a.color+'22':'var(--surface)';
+      const bgColor=v.type==='color'?a.color+'18':'var(--bg)';
       const borderColor=v.type==='color'?a.color:statusColor;
       return`<div class="var-chip" style="background:${bgColor};border-color:${borderColor}">
         ${v.type==='color'?`<span class="var-chip-color" style="background:${a.color}"></span>`:''}
-        <span>${a.value}</span>
-        ${a.skuSuffix?`<span style="font-size:10px;color:var(--muted);display:block;font-family:'DM Mono',monospace">${a.skuSuffix}</span>`:''}
-        <div class="var-chip-stock">${a.stock} units</div>
+        <strong style="font-size:12px">${a.value}</strong>
+        ${a.skuSuffix?`<div style="font-size:10px;color:var(--muted);font-family:'DM Mono',monospace">${item.sku}${a.skuSuffix}</div>`:''}
+        ${a.barcode?`<div style="font-size:10px;color:var(--muted);font-family:'DM Mono',monospace">▐${a.barcode}▌</div>`:''}
+        <div class="var-chip-stock" style="color:${statusColor};font-size:13px;font-weight:700;margin:4px 0">${a.stock} units</div>
+        <div style="display:flex;gap:4px;margin-top:4px">
+          <button onclick="variantAdjustStock(${pid},${idx},-1)" style="flex:1;background:color-mix(in srgb,var(--danger) 15%,transparent);border:1px solid var(--danger);color:var(--danger);border-radius:5px;cursor:pointer;font-size:13px;padding:2px 0">−</button>
+          <button onclick="variantAdjustStock(${pid},${idx},1)" style="flex:1;background:color-mix(in srgb,var(--green) 15%,transparent);border:1px solid var(--green);color:var(--green);border-radius:5px;cursor:pointer;font-size:13px;padding:2px 0">+</button>
+        </div>
         <div class="var-chip-status" style="background:${statusColor}"></div>
       </div>`;
     }).join('');
@@ -1644,9 +1757,12 @@ function renderVarCards(){
       <div class="var-card-header">
         <div>
           <div class="var-card-name">${item.name}</div>
-          <div style="font-size:11px;color:var(--muted);font-family:'DM Mono',monospace">${item.sku} · ${v.label} variants</div>
+          <div style="font-size:11px;color:var(--muted);font-family:'DM Mono',monospace">${item.sku} · ${v.label} variants · Parent stock: <span style="color:var(--accent)">${item.stock}</span></div>
         </div>
-        <button class="btn btn-ghost btn-sm" onclick="editVariant(${pid})">✏️ Edit</button>
+        <div style="display:flex;gap:6px">
+          <button class="btn btn-ghost btn-sm" onclick="editVariant(${pid})">✏️ Edit</button>
+          <button class="btn btn-ghost btn-sm" style="color:var(--danger);border-color:var(--danger)" onclick="deleteVariant(${pid})">🗑</button>
+        </div>
       </div>
       <div class="var-grid">${chips}</div>
       <div class="var-summary">
@@ -1659,17 +1775,14 @@ function renderVarCards(){
   }).join('');
 }
 
-function editVariant(pid){
-  document.getElementById('var-product-sel').value=pid;
-  const v=variants[pid];
-  if(!v) return;
-  setVarType(v.type, document.querySelector(`[data-type="${v.type}"]`)||document.querySelector('.var-type-btn'));
-  if(v.type==='custom'){
-    document.getElementById('var-custom-label-wrap').style.display='block';
-    document.getElementById('var-custom-label').value=v.label;
-  }
-  document.getElementById('var-attrs-container').innerHTML='';
-  v.attrs.forEach(a=>addVarAttrRow(a.value,a.skuSuffix,a.stock,a.color||'#00e5a0'));
+function deleteVariant(pid){
+  if(!confirm('Delete all variants for this product?')) return;
+  delete variants[pid];
+  localStorage.setItem('sf_variants', JSON.stringify(variants));
+  renderVarCards();
+  populateVarProductSelect();
+  syncToSheet();
+  toast('🗑️','Variants deleted');
 }
 
 /* ============================================================
