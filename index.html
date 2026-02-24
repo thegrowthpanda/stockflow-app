@@ -669,7 +669,7 @@ kbd{background:var(--surface2);border:1px solid var(--border);border-radius:4px;
           </div>
         </div>
 
-        <!-- Default stock & reorder for all -->
+        <!-- Default stock, reorder, cost, sell price -->
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-bottom:14px">
           <div>
             <div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.3px;margin-bottom:4px">Default Stock</div>
@@ -678,6 +678,14 @@ kbd{background:var(--surface2);border:1px solid var(--border);border-radius:4px;
           <div>
             <div style="font-size:11px;color:var(--warn);text-transform:uppercase;letter-spacing:.3px;margin-bottom:4px">Default Min ⚠</div>
             <input class="var-attr-input" id="var-default-reorder" type="number" min="0" value="5" style="width:100%;border-color:var(--warn)">
+          </div>
+          <div>
+            <div style="font-size:11px;color:var(--blue);text-transform:uppercase;letter-spacing:.3px;margin-bottom:4px">Default Cost ₹</div>
+            <input class="var-attr-input" id="var-default-cost" type="number" min="0" step="0.01" value="0" style="width:100%;border-color:var(--blue)" placeholder="Production cost">
+          </div>
+          <div>
+            <div style="font-size:11px;color:var(--accent);text-transform:uppercase;letter-spacing:.3px;margin-bottom:4px">Default Sell Price ₹</div>
+            <input class="var-attr-input" id="var-default-price" type="number" min="0" step="0.01" value="0" style="width:100%" placeholder="Selling price">
           </div>
         </div>
 
@@ -2043,9 +2051,11 @@ function generateMatrix(){
   const combos  = cartesian(varAxes); // array of [val, val, ...] per axis
   const defaultStock   = parseInt(document.getElementById('var-default-stock').value)||0;
   const defaultReorder = parseInt(document.getElementById('var-default-reorder').value)||5;
+  const defaultCost    = parseFloat(document.getElementById('var-default-cost').value)||0;
+  const defaultPrice   = parseFloat(document.getElementById('var-default-price').value)||(item?item.price:0);
   const parentSku = item ? item.sku : '';
 
-  // If editing existing, preserve existing stock/barcode
+  // If editing existing, preserve existing stock/barcode/cost/price
   const existing = variants[pid] ? variants[pid].combos : [];
   const existingMap = {};
   existing.forEach(c=>{ existingMap[c.key]=c; });
@@ -2060,10 +2070,12 @@ function generateMatrix(){
       key,
       labels,
       sku: parentSku+skuSuffix,
-      barcode: ex ? ex.barcode||'' : '',
-      stock: ex ? ex.stock : defaultStock,
+      barcode     : ex ? ex.barcode||'' : '',
+      stock       : ex ? ex.stock : defaultStock,
       reorderPoint: ex ? ex.reorderPoint : defaultReorder,
-      color: colorVal ? colorVal.color : '#00e5a0'
+      cost        : ex ? (ex.cost??defaultCost) : defaultCost,
+      sellPrice   : ex ? (ex.sellPrice??defaultPrice) : defaultPrice,
+      color       : colorVal ? colorVal.color : '#00e5a0'
     };
   });
 
@@ -2079,7 +2091,7 @@ function renderMatrixEditor(pid, rows){
   pendingMatrix = { pid, rows };
   const item = items.find(i=>i.id==pid);
   document.getElementById('matrix-editor-title').textContent = (item?item.name:'Product') + ' — Combination Matrix';
-  document.getElementById('matrix-editor-sub').textContent = rows.length + ' combinations × ' + varAxes.length + ' attributes';
+  document.getElementById('matrix-editor-sub').textContent = rows.length + ' combinations × ' + varAxes.length + ' attributes — set stock, cost & sell price per variant';
 
   const axisNames = varAxes.map(a=>a.name);
 
@@ -2089,11 +2101,12 @@ function renderMatrixEditor(pid, rows){
     <th class="matrix-th">Barcode</th>
     <th class="matrix-th">Stock</th>
     <th class="matrix-th" style="color:var(--warn)">Min ⚠</th>
+    <th class="matrix-th" style="color:var(--blue)">Cost ₹</th>
+    <th class="matrix-th" style="color:var(--accent)">Sell ₹</th>
+    <th class="matrix-th" style="color:var(--green)">Margin</th>
   </tr></thead>`;
 
   const tbody = '<tbody>'+rows.map((row,rIdx)=>{
-    const colorDot = row.color && row.color!=='#00e5a0'
-      ? `<span class="matrix-color-dot" style="background:${row.color}"></span>` : '';
     const labelCells = row.labels.map((lbl,i)=>{
       const isColorAxis = varAxes[i]&&varAxes[i].isColor;
       const axisVal = varAxes[i]?(varAxes[i].values.find(v=>v.label===lbl)||{}):{}; 
@@ -2104,23 +2117,37 @@ function renderMatrixEditor(pid, rows){
         </div>
       </td>`;
     }).join('');
-    return`<tr>
+    const margin = row.sellPrice>0 ? Math.round((row.sellPrice-row.cost)/row.sellPrice*100) : 0;
+    const mColor = margin>=40?'var(--accent)':margin>=20?'var(--warn)':'var(--danger)';
+    return`<tr id="mrow-${rIdx}">
       ${labelCells}
       <td class="matrix-td"><span class="matrix-sku-badge">${row.sku}</span></td>
-      <td class="matrix-td"><input class="matrix-barcode-input" data-row="${rIdx}" data-field="barcode" value="${row.barcode}" placeholder="Barcode EAN"></td>
+      <td class="matrix-td"><input class="matrix-barcode-input" data-row="${rIdx}" data-field="barcode" value="${row.barcode}" placeholder="EAN"></td>
       <td class="matrix-td"><input class="matrix-input" data-row="${rIdx}" data-field="stock" type="number" min="0" value="${row.stock}"></td>
       <td class="matrix-td"><input class="matrix-input warn-input" data-row="${rIdx}" data-field="reorderPoint" type="number" min="0" value="${row.reorderPoint}"></td>
+      <td class="matrix-td"><input class="matrix-input" data-row="${rIdx}" data-field="cost" type="number" min="0" step="0.01" value="${row.cost}" style="border-color:var(--blue);width:70px"></td>
+      <td class="matrix-td"><input class="matrix-input" data-row="${rIdx}" data-field="sellPrice" type="number" min="0" step="0.01" value="${row.sellPrice}" style="border-color:var(--accent);width:70px"></td>
+      <td class="matrix-td" id="margin-${rIdx}" style="text-align:center;font-family:'DM Mono',monospace;font-size:12px;font-weight:700;color:${mColor}">${margin}%</td>
     </tr>`;
   }).join('')+'</tbody>';
 
   document.getElementById('matrix-table').innerHTML = thead+tbody;
 
-  // Live update pendingMatrix.rows on input
+  // Live update pendingMatrix.rows on input + recalc margin
   document.querySelectorAll('#matrix-table input[data-row]').forEach(inp=>{
     inp.addEventListener('input', ()=>{
       const r = parseInt(inp.dataset.row);
       const f = inp.dataset.field;
-      pendingMatrix.rows[r][f] = f==='stock'||f==='reorderPoint' ? parseInt(inp.value)||0 : inp.value;
+      if(f==='barcode') pendingMatrix.rows[r][f] = inp.value;
+      else pendingMatrix.rows[r][f] = parseFloat(inp.value)||0;
+      // Recalc margin live
+      const row = pendingMatrix.rows[r];
+      if(f==='cost'||f==='sellPrice'){
+        const margin = row.sellPrice>0 ? Math.round((row.sellPrice-row.cost)/row.sellPrice*100) : 0;
+        const mColor = margin>=40?'var(--accent)':margin>=20?'var(--warn)':'var(--danger)';
+        const mCell = document.getElementById('margin-'+r);
+        if(mCell){ mCell.textContent=margin+'%'; mCell.style.color=mColor; }
+      }
     });
   });
 }
@@ -2135,9 +2162,19 @@ function saveVariants(){
     combos : rows
   };
 
-  // Update parent stock = sum of all combos
+  // Update parent item:
+  //   stock = sum of all combo stocks
+  //   price = stock-weighted average sell price across combos (reflects blended value)
   const parentItem = items.find(i=>i.id==pid);
-  if(parentItem) parentItem.stock = rows.reduce((s,r)=>s+r.stock,0);
+  if(parentItem){
+    const totalStock = rows.reduce((s,r)=>s+r.stock,0);
+    parentItem.stock = totalStock;
+
+    // Weighted average sell price
+    const weightedPriceSum = rows.reduce((s,r)=>s+(r.sellPrice*(r.stock||1)),0);
+    const totalWeight      = rows.reduce((s,r)=>s+(r.stock||1),0);
+    parentItem.price = totalWeight>0 ? parseFloat((weightedPriceSum/totalWeight).toFixed(2)) : (rows[0]?.sellPrice||parentItem.price);
+  }
 
   localStorage.setItem('sf_variants', JSON.stringify(variants));
   document.getElementById('var-matrix-editor').style.display='none';
@@ -2191,7 +2228,14 @@ function variantAdjustStock(pid, comboIdx, delta){
   combo.stock = newStock;
 
   const parentItem = items.find(i=>i.id==pid);
-  if(parentItem) parentItem.stock = variants[pid].combos.reduce((s,c)=>s+c.stock,0);
+  if(parentItem){
+    const combos = variants[pid].combos;
+    parentItem.stock = combos.reduce((s,c)=>s+c.stock,0);
+    const totalWeight      = combos.reduce((s,c)=>s+(c.stock||1),0);
+    const weightedPriceSum = combos.reduce((s,c)=>s+((c.sellPrice??0)*(c.stock||1)),0);
+    if(totalWeight>0 && weightedPriceSum>0)
+      parentItem.price = parseFloat((weightedPriceSum/totalWeight).toFixed(2));
+  }
 
   localStorage.setItem('sf_variants', JSON.stringify(variants));
 
@@ -2320,9 +2364,11 @@ function renderVarCards(){
     const v=variants[pid];
     const combos=v.combos||v.attrs||[];
     const axes=v.axes||[];
-    const totalStock=combos.reduce((s,c)=>s+c.stock,0);
-    const totalVal=totalStock*item.price;
-    const productAlerts=allAlerts.filter(a=>a.pid==pid);
+    const totalStock   = combos.reduce((s,c)=>s+c.stock,0);
+    const totalCostVal = combos.reduce((s,c)=>s+(c.cost??0)*c.stock,0);
+    const totalSellVal = combos.reduce((s,c)=>s+(c.sellPrice??0)*c.stock,0);
+    const avgMargin    = totalSellVal>0 ? Math.round((totalSellVal-totalCostVal)/totalSellVal*100) : null;
+    const productAlerts= allAlerts.filter(a=>a.pid==pid);
     const parentStatusColor=getStatus(item)==='out'?'var(--danger)':getStatus(item)==='low'?'var(--warn)':'var(--accent)';
 
     // Group combos for display — if 2 axes, show as 2D grid; else flat chips
@@ -2353,9 +2399,17 @@ function renderVarCards(){
           const c=combos[cIdx];
           const st=getVarStatus(c);
           const sc=st==='out'?'var(--danger)':st==='low'?'var(--warn)':'var(--accent)';
+          const margin = c.sellPrice>0 ? Math.round((c.sellPrice-(c.cost??0))/c.sellPrice*100) : null;
+          const mColor = margin===null?'var(--muted)':margin>=40?'var(--accent)':margin>=20?'var(--warn)':'var(--danger)';
           comboHtml+=`<td style="padding:4px 6px;border:1px solid var(--border);text-align:center;background:${st!=='ok'?'color-mix(in srgb,'+sc+' 8%,transparent)':''}">
             <div style="font-family:'DM Mono',monospace;font-size:13px;font-weight:700;color:${sc}">${c.stock}</div>
             <div style="font-size:9px;color:var(--muted)">min ${c.reorderPoint??5}</div>
+            ${c.sellPrice>0?`<div style="font-size:9px;margin-top:2px">
+              <span style="color:var(--blue)">₹${(c.cost??0).toFixed(0)}</span>
+              <span style="color:var(--muted)">→</span>
+              <span style="color:var(--accent)">₹${c.sellPrice.toFixed(0)}</span>
+            </div>`:''}
+            ${margin!==null?`<div style="font-size:9px;color:${mColor};font-weight:700">${margin}% margin</div>`:''}
             <div style="display:flex;gap:2px;margin-top:3px;justify-content:center">
               <button onclick="variantAdjustStock(${pid},${cIdx},-1)" style="width:20px;height:20px;background:color-mix(in srgb,var(--danger) 15%,transparent);border:1px solid var(--danger);color:var(--danger);border-radius:4px;cursor:pointer;font-size:12px;padding:0">−</button>
               <button onclick="variantQuickSet(${pid},${cIdx})" style="width:20px;height:20px;background:var(--surface2);border:1px solid var(--border);color:var(--muted);border-radius:4px;cursor:pointer;font-size:10px;padding:0">✏</button>
@@ -2383,6 +2437,21 @@ function renderVarCards(){
           <div style="font-size:10px;color:var(--muted);font-family:'DM Mono',monospace;margin-bottom:2px">${c.sku||''}</div>
           <div class="var-chip-bar"><div class="var-chip-bar-fill" style="width:${barPct}%;background:${sc}"></div></div>
           <div style="color:${sc};font-size:14px;font-weight:700;margin:5px 0">${c.stock} <span style="font-size:10px;font-weight:400;color:var(--muted)">units</span></div>
+          ${(c.cost??0)>0||c.sellPrice>0?`<div style="display:flex;justify-content:space-between;align-items:center;background:var(--surface2);border-radius:6px;padding:5px 8px;margin:4px 0;font-size:11px">
+            <div style="text-align:center">
+              <div style="color:var(--muted);font-size:9px;text-transform:uppercase;letter-spacing:.3px">Cost</div>
+              <div style="color:var(--blue);font-family:'DM Mono',monospace;font-weight:600">₹${(c.cost??0).toFixed(2)}</div>
+            </div>
+            <div style="color:var(--border)">→</div>
+            <div style="text-align:center">
+              <div style="color:var(--muted);font-size:9px;text-transform:uppercase;letter-spacing:.3px">Sell</div>
+              <div style="color:var(--accent);font-family:'DM Mono',monospace;font-weight:600">₹${(c.sellPrice??0).toFixed(2)}</div>
+            </div>
+            <div style="text-align:center">
+              <div style="color:var(--muted);font-size:9px;text-transform:uppercase;letter-spacing:.3px">Margin</div>
+              ${(()=>{ const m=c.sellPrice>0?Math.round((c.sellPrice-(c.cost??0))/c.sellPrice*100):0; const mc=m>=40?'var(--accent)':m>=20?'var(--warn)':'var(--danger)'; return `<div style="color:${mc};font-family:'DM Mono',monospace;font-weight:700">${m}%</div>`; })()}
+            </div>
+          </div>`:''}
           <div class="var-reorder-badge" style="${st!=='ok'?'border-color:'+sc+';color:'+sc:''}"><span>⚠ Min:</span> ${c.reorderPoint??5}</div>
           <div style="display:flex;gap:4px;margin-top:6px">
             <button onclick="variantAdjustStock(${pid},${cIdx},-1)" style="flex:1;background:color-mix(in srgb,var(--danger) 15%,transparent);border:1px solid var(--danger);color:var(--danger);border-radius:5px;cursor:pointer;font-size:14px;padding:3px 0;font-weight:700">−</button>
@@ -2411,10 +2480,12 @@ function renderVarCards(){
       </div>
       ${comboHtml}
       <div class="var-summary">
-        <div class="var-summary-item">Combinations: <span>${combos.length}</span></div>
+        <div class="var-summary-item">Combos: <span>${combos.length}</span></div>
         <div class="var-summary-item">Total Stock: <span>${totalStock}</span></div>
-        <div class="var-summary-item">Value: <span>₹${totalVal.toLocaleString('en-IN',{maximumFractionDigits:0})}</span></div>
-        <div class="var-summary-item">Out/Low: <span style="color:${productAlerts.length?'var(--danger)':'var(--accent)'}">${productAlerts.length}</span></div>
+        <div class="var-summary-item">Cost Value: <span style="color:var(--blue)">₹${totalCostVal.toLocaleString('en-IN',{maximumFractionDigits:0})}</span></div>
+        <div class="var-summary-item">Sell Value: <span style="color:var(--accent)">₹${totalSellVal.toLocaleString('en-IN',{maximumFractionDigits:0})}</span></div>
+        ${avgMargin!==null?`<div class="var-summary-item">Avg Margin: <span style="color:${avgMargin>=40?'var(--accent)':avgMargin>=20?'var(--warn)':'var(--danger)'}">${avgMargin}%</span></div>`:''}
+        <div class="var-summary-item">Alerts: <span style="color:${productAlerts.length?'var(--danger)':'var(--accent)'}">${productAlerts.length}</span></div>
       </div>
     </div>`;
   }).join('');
