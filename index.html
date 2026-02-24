@@ -1237,7 +1237,1701 @@ kbd{background:var(--surface2);border:1px solid var(--border);border-radius:4px;
 <div class="loading-overlay" id="loading"><div class="spinner"></div><div style="color:var(--muted);font-size:13px" id="loading-text">Syncing with Google Sheets...</div></div>
 <div class="toast" id="toast"><span id="toast-icon">✅</span><span id="toast-msg">Done!</span></div>
 
-<script src="stockflow.js"></script>
+<script>
+/* ============================================================
+   CONFIG & STATE
+   ============================================================ */
+let SCRIPT_URL = localStorage.getItem('sf_sheet_url') || '';
+let isConnected = false;
+let isSyncing = false;
+
+let items = JSON.parse(localStorage.getItem('sf_v3') || '[]');
+let suppliers = JSON.parse(localStorage.getItem('sf_sup_v3') || '[]');
+let nextId = items.length > 0 ? Math.max(...items.map(i=>Number(i.id)||0))+1 : 1;
+let nextSupId = suppliers.length > 0 ? Math.max(...suppliers.map(s=>Number(s.id)||0))+1 : 1;
+
+let editingId=null, editingSupId=null;
+let sortField=null, sortDir=1;
+const PAGE=10; let page=0;
+let charts={};
+let billRowId=0;
+
+/* ============================================================
+   BARCODE SCANNER (MOBILE CAMERA)
+   ============================================================ */
+let html5QrcodeScanner = null;
+
+function toggleScanner() {
+  const readerDiv = document.getElementById('reader');
+  
+  // If scanner is currently open, close it
+  if (readerDiv.style.display === 'block') {
+    if (html5QrcodeScanner) {
+      html5QrcodeScanner.clear();
+      html5QrcodeScanner = null;
+    }
+    readerDiv.style.display = 'none';
+    return;
+  }
+
+  // Open scanner
+  readerDiv.style.display = 'block';
+  
+  // Initialize the scanner
+  html5QrcodeScanner = new Html5QrcodeScanner(
+    "reader",
+    { fps: 10, qrbox: { width: 250, height: 100 }, supportedScanTypes: [Html5QrcodeScanType.SCAN_TYPE_CAMERA] },
+    /* verbose= */ false
+  );
+  
+  html5QrcodeScanner.render(onScanSuccess, onScanFailure);
+}
+
+function onScanSuccess(decodedText, decodedResult) {
+  // Populate the input with the scanned barcode
+  document.getElementById('f-barcode').value = decodedText;
+  
+  // Play a little beep sound (optional but nice)
+  let beep = new Audio('data:audio/mp3;base64,//NExAAAAANIAAAAAExBTUUzLjEwMKqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq/9jDAAAABzOEAAAAAABzhAAAB//OAAAA//OAAAA//OAAAA//OAAAA//OAAAA//OAAAA');
+  beep.play().catch(e=>console.log(e)); // Catch error if browser blocks autoplay
+
+  // Stop scanning and hide the viewfinder
+  if (html5QrcodeScanner) {
+    html5QrcodeScanner.clear();
+    html5QrcodeScanner = null;
+  }
+  document.getElementById('reader').style.display = 'none';
+  
+  toast('📷', 'Barcode Scanned!');
+}
+
+function onScanFailure(error) {
+  // We ignore failures because it continuously fires while trying to focus/read
+}
+
+/* ============================================================
+   BARCODE ADD / DEDUCT STOCK
+   ============================================================ */
+const scanHistory = [];
+let addCamScanner = null;
+let deductCamScanner = null;
+let lastNotFoundBarcode = '';
+
+function processBarcodeScan(mode) {
+  const inputEl = document.getElementById(mode+'-barcode-input');
+  const qtyEl   = document.getElementById(mode+'-qty-input');
+  const barcode  = inputEl.value.trim();
+  const qty      = parseInt(qtyEl.value) || 1;
+
+  document.getElementById(mode+'-result-card').classList.remove('show');
+  document.getElementById(mode+'-not-found').classList.remove('show');
+  if(mode==='deduct') document.getElementById('deduct-warn').style.display='none';
+
+  if(!barcode){ toast('⚠️','Please enter or scan a barcode'); inputEl.focus(); return; }
+  if(qty < 1){ toast('⚠️','Quantity must be at least 1'); return; }
+
+  // ── 1. Try matching a VARIANT first (by barcode or full SKU) ──
+  let matchedVariant = null, matchedVarParent = null, matchedVarIdx = -1, matchedVarPid;
+  const varMatch = findVariantByBarcode(barcode);
+  if(varMatch){
+    matchedVarPid    = varMatch.pid;
+    matchedVarIdx    = varMatch.comboIdx;
+    matchedVariant   = varMatch.combo;
+    matchedVarParent = items.find(i=>i.id==varMatch.pid);
+  }
+
+  // ── 2. Fallback: try matching a parent item ──
+  const item = matchedVarParent || items.find(i => (i.barcode && i.barcode === barcode) || i.sku === barcode);
+
+  if(!item && !matchedVariant){
+    lastNotFoundBarcode = barcode;
+    document.getElementById(mode+'-not-found').classList.add('show');
+    document.getElementById(mode+'-not-found-code').textContent = 'Scanned: ' + barcode;
+    toast('❌','Barcode not found in inventory');
+    inputEl.value=''; inputEl.focus();
+    return;
+  }
+
+  // ── 3. Apply stock change ──
+  const before = item.stock;
+  let variantBefore = matchedVariant ? matchedVariant.stock : null;
+  let resultLabel = item.name;
+  let variantNote = '';
+
+  if (mode === 'add') {
+    item.stock += qty;
+    if (matchedVariant) {
+      matchedVariant.stock += qty;
+      const comboName = matchedVariant.labels ? matchedVariant.labels.join('/') : (matchedVariant.value||'');
+      variantNote = ` (${comboName} +${qty})`;
+    }
+  } else {
+    if (qty > item.stock) {
+      document.getElementById('deduct-warn').style.display='block';
+      document.getElementById('deduct-warn-msg').textContent = `Only ${item.stock} in stock, cannot deduct ${qty}.`;
+      inputEl.value=''; inputEl.focus();
+      return;
+    }
+    item.stock -= qty;
+    if (matchedVariant) {
+      const varStock = matchedVariant.stock;
+      matchedVariant.stock = Math.max(0, varStock - qty);
+      const comboName = matchedVariant.labels ? matchedVariant.labels.join('/') : (matchedVariant.value||'');
+      variantNote = ` (${comboName} -${qty})`;
+    }
+  }
+
+  const after = item.stock;
+
+  // ── 4. Update variant in variants object ──
+  if (matchedVariant && matchedVarPid !== undefined) {
+    const vData = variants[matchedVarPid];
+    const comboArr = vData.combos || vData.attrs;
+    comboArr[matchedVarIdx] = matchedVariant;
+    localStorage.setItem('sf_variants', JSON.stringify(variants));
+    renderVarCards();
+  }
+
+  // ── 5. Show result card ──
+  const isAdd = mode === 'add';
+  document.getElementById(mode+'-result-name').textContent = item.name + variantNote;
+  document.getElementById(mode+'-result-sku').textContent  = item.sku + (item.barcode?' · '+item.barcode:'') + (matchedVariant?' → Variant: '+matchedVariant.value:'');
+  document.getElementById(mode+'-before').textContent = before;
+  document.getElementById(mode+'-delta').textContent  = (isAdd?'+':'-')+qty;
+  document.getElementById(mode+'-after').textContent  = after;
+  if(!isAdd) document.getElementById('deduct-after').style.color = after <= item.reorderPoint ? 'var(--danger)' : 'var(--accent)';
+  document.getElementById(mode+'-result-card').classList.add('show');
+
+  // ── 6. Low/out stock warning ──
+  if(!isAdd){
+    if(after === 0){
+      document.getElementById('deduct-warn').style.display='block';
+      document.getElementById('deduct-warn-msg').textContent = `${item.name} is now OUT OF STOCK!`;
+    } else if(after <= item.reorderPoint){
+      document.getElementById('deduct-warn').style.display='block';
+      document.getElementById('deduct-warn-msg').textContent = `${item.name} is now low (${after} left, reorder point: ${item.reorderPoint})`;
+    }
+  }
+
+  // ── 7. Build scan log entry ──
+  const scanLog = {
+    timestamp : new Date().toISOString(),
+    mode,
+    name     : item.name + (matchedVariant?' ['+matchedVariant.value+']':''),
+    sku      : item.sku + (matchedVariant?matchedVariant.skuSuffix:''),
+    barcode  : barcode,
+    qty,
+    before,
+    after,
+    variantValue : matchedVariant ? (matchedVariant.labels ? matchedVariant.labels.join(' / ') : (matchedVariant.value||'')) : '',
+    parentSku    : item.sku
+  };
+
+  addToScanHistory(mode, item, qty, before, after, matchedVariant);
+  toast('✅', `${isAdd?'+':'-'}${qty}${variantNote} → ${item.name} stock: ${after}`);
+
+  inputEl.value = '';
+  qtyEl.value = 1;
+  inputEl.focus();
+  render();
+  syncToSheet(scanLog);
+}
+
+function addToScanHistory(mode, item, qty, before, after, variant=null){
+  const now = new Date();
+  const timeStr = now.toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
+  scanHistory.unshift({mode, name:item.name, sku:item.sku, qty, before, after, time:timeStr, variant:variant?variant.value:null});
+  if(scanHistory.length > 50) scanHistory.pop();
+  renderScanHistory(mode);
+}
+
+function renderScanHistory(mode){
+  const listEl = document.getElementById(mode+'-history-list');
+  const relevant = scanHistory.filter(h=>h.mode===mode);
+  if(!relevant.length){ listEl.innerHTML='<div style="color:var(--muted);font-size:13px">No transactions yet this session.</div>'; return; }
+  listEl.innerHTML = relevant.map(h=>{
+    const badge = h.mode==='add'
+      ? `<span class="scan-hist-badge scan-hist-add">+${h.qty}</span>`
+      : `<span class="scan-hist-badge scan-hist-deduct">-${h.qty}</span>`;
+    const varTag = h.variant ? `<span style="background:var(--surface);border:1px solid var(--border);border-radius:4px;padding:1px 6px;font-size:10px;margin-left:4px;color:var(--accent)">${h.variant}</span>` : '';
+    return `<div class="scan-hist-item">
+      ${badge}
+      <div class="scan-hist-info"><strong>${h.name}</strong>${varTag} <span style="color:var(--muted);font-size:11px">${h.sku}</span><br><span style="color:var(--muted);font-size:12px">${h.before} → ${h.after}</span></div>
+      <div class="scan-hist-time">${h.time}</div>
+    </div>`;
+  }).join('');
+}
+
+function openModalWithBarcode(){
+  openModal();
+  setTimeout(()=>{
+    document.getElementById('f-barcode').value = lastNotFoundBarcode;
+    toast('📋','Barcode pre-filled — complete the item details');
+  }, 200);
+}
+
+// Camera toggles for add/deduct tabs
+function toggleScanCamera(mode){
+  const readerId = mode+'-cam-reader';
+  const readerEl = document.getElementById(readerId);
+  let scanner = mode==='add' ? addCamScanner : deductCamScanner;
+
+  if(scanner){
+    scanner.clear().catch(()=>{});
+    if(mode==='add') addCamScanner=null; else deductCamScanner=null;
+    readerEl.style.display='none';
+    return;
+  }
+
+  readerEl.style.display='block';
+  const newScanner = new Html5QrcodeScanner(readerId,
+    {fps:10, qrbox:{width:280, height:110}, supportedScanTypes:[Html5QrcodeScanType.SCAN_TYPE_CAMERA]}, false);
+
+  newScanner.render((decodedText)=>{
+    document.getElementById(mode+'-barcode-input').value = decodedText;
+    new Audio('data:audio/mp3;base64,//NExAAAAANIAAAAAExBTUUzLjEwMKqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq/9jDAAAABzOEAAAAAABzhAAAB//OAAAA//OAAAA//OAAAA//OAAAA//OAAAA//OAAAA//OAAAA').play().catch(()=>{});
+    newScanner.clear().catch(()=>{});
+    readerEl.style.display='none';
+    if(mode==='add') addCamScanner=null; else deductCamScanner=null;
+    toast('📷','Barcode scanned!');
+    setTimeout(()=>processBarcodeScan(mode), 300);
+  }, ()=>{});
+
+  if(mode==='add') addCamScanner=newScanner; else deductCamScanner=newScanner;
+}
+
+/* ============================================================
+   GOOGLE SHEETS API LOGIC
+   ============================================================ */
+async function pingSheet() {
+  if (!SCRIPT_URL) return false;
+  try {
+    setSyncState('syncing', 'Connecting to Google Sheets...');
+    const res = await fetch(`${SCRIPT_URL}?action=ping&t=${Date.now()}`);
+    const data = await res.json();
+    if (data.status === 'ok') {
+      isConnected = true;
+      setSyncState('connected', `Connected to sheet: "${data.sheet}"`);
+      document.getElementById('sync-btn').disabled = false;
+      document.getElementById('setup-banner').classList.add('hidden');
+      return true;
+    }
+  } catch (e) {
+    setSyncState('error', 'Connection failed — check your URL and try again');
+  }
+  return false;
+}
+
+async function loadFromSheet() {
+  if (!SCRIPT_URL) return;
+  showLoading('Loading from Google Sheets...');
+  try {
+    const res = await fetch(`${SCRIPT_URL}?t=${Date.now()}`);
+    const data = await res.json();
+    if (data.items) items = data.items.map(i => ({...i, id: Number(i.id), stock: Number(i.stock), price: Number(i.price), maxCapacity: Number(i.maxCapacity), reorderPoint: Number(i.reorderPoint), gstRate: Number(i.gstRate)}));
+    if (data.suppliers) suppliers = data.suppliers.map(s => ({...s, id: Number(s.id)}));
+    // Load variants from sheet (stored as JSON blob)
+    if (data.variants && typeof data.variants === 'object') {
+      variants = data.variants;
+      localStorage.setItem('sf_variants', JSON.stringify(variants));
+    }
+    if (data.recipes && typeof data.recipes === 'object') {
+      recipes = data.recipes;
+      localStorage.setItem('sf_recipes', JSON.stringify(recipes));
+    }
+    if (data.iterations && Array.isArray(data.iterations)) {
+      iterations = data.iterations;
+      localStorage.setItem('sf_iterations', JSON.stringify(iterations));
+    }
+
+    nextId = items.length > 0 ? Math.max(...items.map(i=>i.id)) + 1 : 1;
+    nextSupId = suppliers.length > 0 ? Math.max(...suppliers.map(s=>s.id)) + 1 : 1;
+
+    localStorage.setItem('sf_v3', JSON.stringify(items));
+    localStorage.setItem('sf_sup_v3', JSON.stringify(suppliers));
+    updateLastSync();
+    render();
+    toast('✅', 'Loaded successfully');
+  } catch (e) {
+    toast('❌', 'Failed to load from Sheets');
+  } finally {
+    hideLoading();
+  }
+}
+
+async function syncToSheet(scanLog=null) {
+  localStorage.setItem('sf_v3', JSON.stringify(items));
+  localStorage.setItem('sf_sup_v3', JSON.stringify(suppliers));
+  localStorage.setItem('sf_variants', JSON.stringify(variants));
+  localStorage.setItem('sf_recipes', JSON.stringify(recipes));
+  localStorage.setItem('sf_iterations', JSON.stringify(iterations));
+
+  if (!SCRIPT_URL || !isConnected) return;
+
+  try {
+    setSyncState('syncing', 'Syncing to cloud...');
+    const payload = { items, suppliers, variants, recipes, iterations };
+    if (scanLog) payload.scanLog = scanLog;
+    await fetch(SCRIPT_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify(payload)
+    });
+    updateLastSync();
+    setSyncState('connected', 'Connected');
+  } catch(e) {
+    setSyncState('error', 'Sync failed! Saved locally.');
+    console.error('Sync error:', e);
+  }
+}
+
+async function syncAll() {
+  if (isSyncing) return;
+  isSyncing = true;
+  await syncToSheet(); // Push local changes just in case
+  await loadFromSheet(); // Pull fresh
+  isSyncing = false;
+}
+
+async function connectSheet() {
+  const url = document.getElementById('sheet-url-input').value.trim();
+  if (!url.includes('script.google.com')) { toast('⚠️', 'Invalid Google Apps Script URL'); return; }
+  SCRIPT_URL = url;
+  localStorage.setItem('sf_sheet_url', url);
+  if (await pingSheet()) await loadFromSheet();
+}
+
+async function connectFromModal() {
+  const url = document.getElementById('sheet-url-modal').value.trim();
+  if (!url.includes('script.google.com')) { toast('⚠️', 'Invalid Google Apps Script URL'); return; }
+  SCRIPT_URL = url;
+  localStorage.setItem('sf_sheet_url', url);
+  closeSheetsModal();
+  if (await pingSheet()) await loadFromSheet();
+}
+
+function setSyncState(state, text) {
+  document.getElementById('sync-dot').className = 'sync-dot ' + state;
+  document.getElementById('sync-text').textContent = text;
+}
+
+function updateLastSync() {
+  const now = new Date();
+  document.getElementById('last-sync-text').textContent = `Last sync: ${now.toLocaleTimeString()}`;
+  localStorage.setItem('sf_last_sync', now.toISOString());
+}
+
+function showLoading(t) { document.getElementById('loading-text').textContent=t; document.getElementById('loading').classList.add('show'); }
+function hideLoading() { document.getElementById('loading').classList.remove('show'); }
+function toast(icon,msg){const el=document.getElementById('toast');document.getElementById('toast-icon').textContent=icon;document.getElementById('toast-msg').textContent=msg;el.classList.add('show');setTimeout(()=>el.classList.remove('show'),3000)}
+
+/* ============================================================
+   RENDER CORE
+   ============================================================ */
+function getStatus(i){if(i.stock===0)return'out';if(i.stock<=i.reorderPoint)return'low';return'ok'}
+function statusLabel(s){return{ok:'🟢 In Stock',low:'🟡 Low',out:'🔴 Out'}[s]}
+function stockColor(p){if(p>.5)return'var(--accent)';if(p>.2)return'var(--warn)';return'var(--danger)'}
+
+function render() { renderStats(); renderTable(); renderAlerts(); renderMVA(); updateAlertCount(); renderSuppliers(); populateQuickAdd(); }
+
+function renderStats() {
+  const out=items.filter(i=>getStatus(i)==='out').length, low=items.filter(i=>getStatus(i)==='low').length;
+  const val=items.reduce((s,i)=>s+i.stock*i.price,0);
+  document.getElementById('stats-row').innerHTML=[
+    {label:'Total SKUs',value:items.length,sub:'unique products',color:'var(--accent)'},
+    {label:'Inventory Value',value:'₹'+val.toLocaleString('en-IN',{maximumFractionDigits:0}),sub:'all locations',color:'var(--blue)'},
+    {label:'Low Stock',value:low,sub:'need reorder',color:'var(--warn)'},
+    {label:'Out of Stock',value:out,sub:'critical',color:'var(--danger)'},
+    {label:'Suppliers',value:suppliers.length,sub:'registered',color:'#c084fc'}
+  ].map(r=>`<div class="stat-card" style="--accent-color:${r.color}"><div class="stat-label">${r.label}</div><div class="stat-value" style="color:${r.color}">${r.value}</div><div class="stat-sub">${r.sub}</div></div>`).join('');
+}
+
+function getFiltered() {
+  const q=document.getElementById('search').value.toLowerCase(), cat=document.getElementById('filter-cat').value, st=document.getElementById('filter-status').value;
+  let res=items.filter(i=>{
+    if(q&&!i.name.toLowerCase().includes(q)&&!i.sku.toLowerCase().includes(q)&&!(i.barcode||'').includes(q))return false;
+    if(cat&&i.category!==cat)return false;
+    if(st&&getStatus(i)!==st)return false;
+    return true;
+  });
+  if(sortField)res.sort((a,b)=>{let av=a[sortField],bv=b[sortField];return typeof av==='string'?av.localeCompare(bv)*sortDir:(av-bv)*sortDir});
+  return res;
+}
+
+function renderTable() {
+  const filtered=getFiltered(), total=filtered.length, paged=filtered.slice(page*PAGE,(page+1)*PAGE);
+  const tbody=document.getElementById('tbody'), empty=document.getElementById('empty-state');
+  if(!paged.length){tbody.innerHTML='';empty.classList.remove('hidden')}
+  else{
+    empty.classList.add('hidden');
+    tbody.innerHTML=paged.map(item=>{
+      const pct=item.maxCapacity?item.stock/item.maxCapacity:0, catBadge={Retail:'badge-retail',Warehouse:'badge-warehouse',Manufacturing:'badge-mfg'}[item.category]||'', bc=item.barcode||'';
+      return`<tr>
+        <td><div class="item-name">${item.name}</div><div class="item-sku">${item.sku}</div>${bc?`<div class="item-barcode">▐${bc}▌</div>`:''}</td>
+        <td><span class="badge ${catBadge}">${item.category}</span></td>
+        <td><div class="stock-bar-wrap"><div class="stock-bar"><div class="stock-fill" style="width:${Math.min(100,pct*100)}%;background:${stockColor(pct)}"></div></div><span class="stock-num" style="color:${stockColor(pct)}">${item.stock}</span></div></td>
+        <td>₹${item.price.toFixed(2)}</td><td style="color:var(--muted);font-family:'DM Mono',monospace;font-size:12px">${item.reorderPoint}</td><td style="color:var(--muted);font-size:12px">${item.location||'—'}</td><td style="color:var(--muted);font-size:12px">${item.supplier||'—'}</td><td>${statusLabel(getStatus(item))}</td>
+        <td><div class="actions"><button class="icon-btn" onclick="openModal(${item.id})" title="Edit">✏️</button><button class="icon-btn" onclick="addToBill(${item.id})" title="Add to GST Bill">🧾</button><button class="icon-btn del" onclick="deleteItem(${item.id})" title="Delete">🗑</button></div></td>
+      </tr>`;
+    }).join('');
+  }
+  const tp=Math.ceil(total/PAGE);
+  document.getElementById('pager').innerHTML=`<span class="pager-info">Showing ${Math.min(page*PAGE+1,total)}–${Math.min((page+1)*PAGE,total)} of ${total}</span><div style="display:flex;gap:6px"><button class="btn btn-ghost btn-sm" onclick="goPage(-1)" ${page===0?'disabled':''}>← Prev</button><button class="btn btn-ghost btn-sm" onclick="goPage(1)" ${page>=tp-1?'disabled':''}>Next →</button></div>`;
+}
+function goPage(d){page=Math.max(0,page+d);renderTable()}
+function sortBy(f){if(sortField===f)sortDir*=-1;else{sortField=f;sortDir=1}renderTable()}
+
+/* ============================================================
+   CRUD OPERATIONS (ITEMS & SUPPLIERS)
+   ============================================================ */
+function openModal(id){
+  editingId=id||null;
+  document.getElementById('modal-title').textContent=id?'Edit Item':'Add New Item';
+  if(id){
+    const item=items.find(i=>i.id===id);
+    document.getElementById('f-name').value=item.name; document.getElementById('f-sku').value=item.sku; document.getElementById('f-barcode').value=item.barcode||''; document.getElementById('f-cat').value=item.category; document.getElementById('f-loc').value=item.location; document.getElementById('f-stock').value=item.stock; document.getElementById('f-max').value=item.maxCapacity; document.getElementById('f-reorder').value=item.reorderPoint; document.getElementById('f-price').value=item.price; document.getElementById('f-hsn').value=item.hsn||''; document.getElementById('f-gst').value=item.gstRate||18; document.getElementById('f-supplier').value=item.supplier||''; document.getElementById('f-notes').value=item.notes||'';
+  } else {
+    ['f-name','f-sku','f-barcode','f-loc','f-supplier','f-notes','f-hsn'].forEach(id=>document.getElementById(id).value=''); ['f-stock','f-max','f-reorder','f-price'].forEach(id=>document.getElementById(id).value=''); document.getElementById('f-gst').value=18;
+  }
+  document.getElementById('modal').classList.add('open');
+}
+
+// Override closeModal to ensure the camera shuts off when the modal is closed
+function closeModal(){
+  if (html5QrcodeScanner) {
+    html5QrcodeScanner.clear();
+    html5QrcodeScanner = null;
+    document.getElementById('reader').style.display = 'none';
+  }
+  document.getElementById('modal').classList.remove('open');
+}
+
+async function saveItem(){
+  const name=document.getElementById('f-name').value.trim(), sku=document.getElementById('f-sku').value.trim();
+  if(!name||!sku){toast('⚠️','Name and SKU required');return}
+  const data={name,sku,barcode:document.getElementById('f-barcode').value,category:document.getElementById('f-cat').value,location:document.getElementById('f-loc').value,stock:+document.getElementById('f-stock').value||0,maxCapacity:+document.getElementById('f-max').value||100,reorderPoint:+document.getElementById('f-reorder').value||10,price:+document.getElementById('f-price').value||0,hsn:document.getElementById('f-hsn').value,gstRate:+document.getElementById('f-gst').value||18,supplier:document.getElementById('f-supplier').value,notes:document.getElementById('f-notes').value};
+  if(editingId){const idx=items.findIndex(i=>i.id===editingId);items[idx]={...items[idx],...data};toast('✅','Item updated!')}
+  else{items.push({id:nextId++,...data});toast('✅','Item added!')}
+  closeModal(); render();
+  await syncToSheet(); // Auto-sync
+}
+async function deleteItem(id){
+  if(!confirm('Delete this item?'))return;
+  items=items.filter(i=>i.id!==id); render(); toast('🗑️','Deleted.');
+  await syncToSheet();
+}
+
+/* SUPPLIERS */
+function renderSuppliers(){
+  const tbody=document.getElementById('sup-tbody'),empty=document.getElementById('sup-empty');
+  if(!suppliers.length){tbody.innerHTML='';empty.classList.remove('hidden');return}
+  empty.classList.add('hidden');
+  tbody.innerHTML=suppliers.map(s=>{
+    const cnt=items.filter(i=>i.supplier===s.name).length;
+    return`<tr><td><strong>${s.name}</strong></td><td>${s.contact||'—'}</td><td style="color:var(--blue)">${s.email||'—'}</td><td style="color:var(--muted);font-size:12px">${s.phone||'—'}</td><td style="font-family:'DM Mono',monospace;font-size:11px">${s.gstin||'—'}</td><td><span class="badge badge-mfg">${cnt} items</span></td><td style="color:var(--muted);font-size:12px">${s.lastOrder||'—'}</td><td><div class="actions"><button class="icon-btn" onclick="openSupplierModal(${s.id})">✏️</button><button class="icon-btn del" onclick="deleteSupplier(${s.id})">🗑</button></div></td></tr>`;
+  }).join('');
+}
+function openSupplierModal(id){
+  editingSupId=id||null; document.getElementById('sup-modal-title').textContent=id?'Edit Supplier':'Add Supplier';
+  const s=id?suppliers.find(x=>x.id===id):{};
+  ['s-name','s-contact','s-email','s-phone','s-gstin','s-addr','s-notes','s-lastorder'].forEach(k=>document.getElementById(k).value=s[k.split('-')[1]]||'');
+  document.getElementById('sup-modal').classList.add('open');
+}
+function closeSupplierModal(){document.getElementById('sup-modal').classList.remove('open')}
+async function saveSupplier(){
+  const name=document.getElementById('s-name').value.trim();
+  if(!name){toast('⚠️','Name required');return}
+  const data={name,contact:document.getElementById('s-contact').value,email:document.getElementById('s-email').value,phone:document.getElementById('s-phone').value,gstin:document.getElementById('s-gstin').value,addr:document.getElementById('s-addr').value,notes:document.getElementById('s-notes').value,lastOrder:document.getElementById('s-lastorder').value};
+  if(editingSupId){const idx=suppliers.findIndex(s=>s.id===editingSupId);suppliers[idx]={...suppliers[idx],...data}}
+  else{suppliers.push({id:nextSupId++,...data})}
+  closeSupplierModal(); render(); toast('✅', 'Supplier Saved!');
+  await syncToSheet();
+}
+async function deleteSupplier(id){if(!confirm('Delete supplier?'))return;suppliers=suppliers.filter(s=>s.id!==id);render();toast('🗑️','Deleted');await syncToSheet();}
+
+/* ============================================================
+   TABS & MODALS
+   ============================================================ */
+function switchTab(tab,btn){
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active')); btn.classList.add('active');
+  ['inventory','addstock','deductstock','monitor','variants','charts','suppliers','mva','production','iteration','alerts','gst'].forEach(t=>{
+    const el=document.getElementById('tab-'+t); if(el) el.classList.toggle('hidden',t!==tab);
+  });
+  if(tab==='charts')setTimeout(renderCharts,60);
+  if(tab==='gst'){populateQuickAdd();updateBill();}
+  if(tab==='addstock'){setTimeout(()=>document.getElementById('add-barcode-input').focus(),100);}
+  if(tab==='deductstock'){setTimeout(()=>document.getElementById('deduct-barcode-input').focus(),100);}
+  if(tab==='monitor'){setTimeout(()=>{drawFlowChart();runMonitorAlgo();},80);}
+  if(tab==='variants'){populateVarProductSelect();renderVarCards();}
+  if(tab==='production'){populateProdSelects();renderRecipes();}
+  if(tab==='iteration'){populateIterSelects();renderIterations();renderIterSummary();}
+}
+function showSheetsSetup(){document.getElementById('sheet-url-modal').value=SCRIPT_URL; document.getElementById('sheets-modal').classList.add('open');}
+function closeSheetsModal(){document.getElementById('sheets-modal').classList.remove('open');}
+function openImportExport(){document.getElementById('ie-modal').classList.add('open')}
+function closeIE(){document.getElementById('ie-modal').classList.remove('open')}
+
+/* ============================================================
+   IMPORT/EXPORT
+   ============================================================ */
+function exportCSV(){const cols=['name','sku','barcode','category','stock','maxCapacity','reorderPoint','price','hsn','gstRate','location','supplier','notes'];const csv=[cols.join(','),...items.map(i=>cols.map(c=>`"${i[c]||''}"`).join(','))].join('\n');const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'}));a.download='inventory.csv';a.click();toast('⬇️','Exported!');}
+function exportJSON(){const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([JSON.stringify(items,null,2)],{type:'application/json'}));a.download='inventory.json';a.click();toast('⬇️','Exported!')}
+async function importCSV(e){
+  const file=e.target.files[0];if(!file)return;
+  const r=new FileReader();
+  r.onload=async evt=>{
+    const lines=evt.target.result.split('\n').filter(Boolean), headers=lines[0].split(',').map(h=>h.trim().replace(/"/g,'')); let added=0;
+    for(let i=1;i<lines.length;i++){
+      const vals=lines[i].split(',').map(v=>v.trim().replace(/"/g,'')), obj={}; headers.forEach((h,idx)=>obj[h]=vals[idx]||'');
+      if(obj.name&&obj.sku){items.push({id:nextId++,name:obj.name,sku:obj.sku,barcode:obj.barcode||'',category:obj.category||'Retail',stock:+obj.stock||0,maxCapacity:+obj.maxCapacity||100,reorderPoint:+obj.reorderPoint||10,price:+obj.price||0,hsn:obj.hsn||'',gstRate:+obj.gstRate||18,location:obj.location||'',supplier:obj.supplier||'',notes:obj.notes||''});added++}
+    }
+    render(); closeIE(); toast('✅',`Imported ${added} items!`); await syncToSheet();
+  };r.readAsText(file);
+}
+
+/* ============================================================
+   MVA & ALERTS & CHARTS
+   ============================================================ */
+function renderMVA(){
+  const retail=items.filter(i=>i.category==='Retail'),wh=items.filter(i=>i.category==='Warehouse'),mfg=items.filter(i=>i.category==='Manufacturing');
+  const vOf=a=>a.reduce((s,i)=>s+i.stock*i.price,0), mvaVal=vOf(mfg), rawMat=vOf(wh), mvaIdx=rawMat>0?((mvaVal/rawMat)*100).toFixed(1)+'%':'N/A', fmt=v=>'₹'+v.toLocaleString('en-IN',{maximumFractionDigits:0});
+  document.getElementById('mva-content').innerHTML=`<div class="card"><div class="card-title">📦 Inventory by Segment</div>${[['Retail',retail],['Warehouse',wh],['Manufacturing',mfg]].map(([n,a])=>`<div class="card-row"><span class="card-label">${n} <small style="color:var(--muted)">(${a.length} SKUs)</small></span><span class="card-val" style="color:var(--accent)">${fmt(vOf(a))}</span></div>`).join('')}</div><div class="card"><div class="card-title">🏭 MVA Metrics</div>${[['Raw Material Value (WH)',fmt(rawMat)],['Finished Goods (Mfg)',fmt(mvaVal)],['MVA Index (Mfg÷Raw×100)',mvaIdx],['Avg Unit Price — Mfg',mfg.length?'₹'+(mfg.reduce((s,i)=>s+i.price,0)/mfg.length).toFixed(2):'N/A']].map(([l,v])=>`<div class="card-row"><span class="card-label">${l}</span><span class="card-val">${v}</span></div>`).join('')}</div><div class="card" style="grid-column:1/-1"><div class="card-title">📊 Stock Health by Segment</div><div style="display:grid;grid-template-columns:repeat(3,1fr);gap:18px;margin-top:6px">${[['Retail',retail,'#5eb8ff'],['Warehouse',wh,'var(--warn)'],['Manufacturing',mfg,'var(--accent)']].map(([n,a,c])=>{const ok=a.filter(i=>getStatus(i)==='ok').length,low=a.filter(i=>getStatus(i)==='low').length,out=a.filter(i=>getStatus(i)==='out').length;return`<div><div style="color:${c};font-weight:600;margin-bottom:7px">${n}</div>${[['In Stock',ok,'var(--accent)'],['Low Stock',low,'var(--warn)'],['Out of Stock',out,'var(--danger)']].map(([l,v,cc])=>`<div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--border)"><span style="color:var(--muted);font-size:12px">${l}</span><span style="color:${cc};font-family:'DM Mono',monospace">${v}</span></div>`).join('')}</div>`;}).join('')}</div></div>`;
+}
+function renderCharts(){
+  if(document.getElementById('tab-charts').classList.contains('hidden'))return;
+  const catColors={Retail:'#5eb8ff',Warehouse:'#ffd166',Manufacturing:'#00e5a0'};
+  if(charts['chart-stock'])charts['chart-stock'].destroy(); charts['chart-stock']=new Chart(document.getElementById('chart-stock'),{type:'bar',data:{labels:items.map(i=>i.name.length>12?i.name.substring(0,12)+'…':i.name),datasets:[{label:'Stock',data:items.map(i=>i.stock),backgroundColor:items.map(i=>(catColors[i.category]||'#888')+'33'),borderColor:items.map(i=>catColors[i.category]||'#888'),borderWidth:1.5,borderRadius:4}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{ticks:{color:'#7a8ba0',font:{size:10}},grid:{color:'#2a334720'}},y:{ticks:{color:'#7a8ba0',font:{size:10}},grid:{color:'#2a334740'}}}}});
+  if(charts['chart-pie'])charts['chart-pie'].destroy(); const cats=['Retail','Warehouse','Manufacturing']; charts['chart-pie']=new Chart(document.getElementById('chart-pie'),{type:'doughnut',data:{labels:cats,datasets:[{data:cats.map(c=>items.filter(i=>i.category===c).reduce((s,i)=>s+i.stock*i.price,0)),backgroundColor:cats.map(c=>catColors[c]+'99'),borderColor:cats.map(c=>catColors[c]),borderWidth:2}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{color:'#e8edf5',font:{size:11}}}}}});
+  if(charts['chart-value'])charts['chart-value'].destroy(); const top10=[...items].sort((a,b)=>(b.stock*b.price)-(a.stock*a.price)).slice(0,10); charts['chart-value']=new Chart(document.getElementById('chart-value'),{type:'bar',data:{labels:top10.map(i=>i.name.length>18?i.name.substring(0,18)+'…':i.name),datasets:[{label:'Value (₹)',data:top10.map(i=>+(i.stock*i.price).toFixed(0)),backgroundColor:'#00e5a033',borderColor:'#00e5a0',borderWidth:1.5,borderRadius:5}]},options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{ticks:{color:'#7a8ba0',font:{size:10}},grid:{color:'#2a334740'}},y:{ticks:{color:'#e8edf5',font:{size:11}},grid:{color:'#2a334720'}}}}});
+}
+
+/* ============================================================
+   GST BILL BUILDER
+   ============================================================ */
+function addBillItem(desc='',qty=1,rate=0,gst=18){
+  const id=++billRowId, div=document.createElement('div'); div.className='gst-item-row'; div.id='brow-'+id;
+  div.innerHTML=`<input class="form-input" placeholder="Item / description" value="${desc}" oninput="updateBill()"><input class="form-input" type="number" min="1" value="${qty}" oninput="updateBill()"><input class="form-input" type="number" min="0" step="0.01" value="${rate}" oninput="updateBill()"><select class="form-input" onchange="updateBill()"><option value="0" ${gst==0?'selected':''}>0%</option><option value="5" ${gst==5?'selected':''}>5%</option><option value="12" ${gst==12?'selected':''}>12%</option><option value="18" ${gst==18?'selected':''}>18%</option><option value="28" ${gst==28?'selected':''}>28%</option></select><button class="rm-btn" onclick="this.parentElement.remove();updateBill()">✕</button>`;
+  document.getElementById('bill-items-container').appendChild(div); updateBill();
+}
+function getBillRows(){const rows=[]; document.querySelectorAll('#bill-items-container .gst-item-row').forEach(row=>{const inputs=row.querySelectorAll('input,select'), desc=inputs[0].value.trim(), qty=+inputs[1].value||0, rate=+inputs[2].value||0, gst=+inputs[3].value||0; rows.push({desc,qty,rate,gst,taxable:qty*rate});}); return rows.filter(r=>r.desc||r.rate>0);}
+function populateQuickAdd(){const sel=document.getElementById('inv-quick-add'); if(!sel)return; const cur=sel.value; sel.innerHTML='<option value="">— Pick an inventory item —</option>'+items.map(i=>`<option value="${i.id}">${i.name} (₹${i.price} | GST ${i.gstRate}%)</option>`).join(''); sel.value=cur;}
+function quickAddItem(sel){const id=+sel.value; if(!id)return; const item=items.find(i=>i.id===id); if(item)addBillItem(`${item.name} [${item.sku}]`,1,item.price,item.gstRate||18); sel.value='';}
+function addToBill(itemId){const item=items.find(i=>i.id===itemId); if(!item)return; switchTab('gst',document.querySelectorAll('.tab')[7]); setTimeout(()=>addBillItem(`${item.name} [${item.sku}]`,1,item.price,item.gstRate||18),120); toast('🧾','Added to GST Bill!');}
+function clearBill(){if(!confirm('Clear all items?'))return; document.getElementById('bill-items-container').innerHTML=''; billRowId=0; addBillItem(); toast('🗑️','Cleared.');}
+
+function updateBill(){
+  const v=id=>document.getElementById(id).value, sellName=v('g-sell-name')||'Your Business', isInter=v('g-txn-type')==='inter', rows=getBillRows(); let subtotal=0, totalGst=0;
+  const rowsHtml=rows.map((r,idx)=>{
+    const tax=r.taxable*r.gst/100; subtotal+=r.taxable; totalGst+=tax; const half=(tax/2).toFixed(2);
+    const gstCols=isInter?`<td align="right">₹${tax.toFixed(2)}</td>`:`<td align="right">₹${half}</td><td align="right">₹${half}</td>`;
+    return`<tr><td>${idx+1}</td><td>${r.desc||'—'}</td><td align="right">${r.qty}</td><td align="right">₹${r.rate.toFixed(2)}</td><td align="right">₹${r.taxable.toFixed(2)}</td><td align="right">${r.gst}%</td>${gstCols}<td align="right"><strong>₹${(r.taxable+tax).toFixed(2)}</strong></td></tr>`;
+  }).join('');
+  const discount=+v('g-discount')||0, grandTotal=subtotal+totalGst-discount, gstHeader=isInter?'<th align="right">IGST</th>':'<th align="right">CGST</th><th align="right">SGST</th>', gstTotals=isInter?`<div class="bill-total-row"><span>IGST</span><span>₹${totalGst.toFixed(2)}</span></div>`:`<div class="bill-total-row"><span>CGST (50%)</span><span>₹${(totalGst/2).toFixed(2)}</span></div><div class="bill-total-row"><span>SGST (50%)</span><span>₹${(totalGst/2).toFixed(2)}</span></div>`;
+
+  document.getElementById('bill-preview').innerHTML=`
+    <div class="bill-header"><div class="bill-company">${sellName}</div><div class="bill-meta"><div style="grid-column:1/-1;margin-top:4px;font-size:16px;font-weight:800;color:#00e5a0;letter-spacing:1px">TAX INVOICE</div><div>Invoice No: <strong style="color:#fff">${v('g-inv-no')}</strong></div><div>Date: <strong style="color:#fff">${v('g-inv-date')}</strong></div></div></div>
+    <div class="bill-section" style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+      <div><div style="font-size:9px;color:#999;text-transform:uppercase;margin-bottom:3px">From</div><strong>${sellName}</strong><br><span style="font-size:11px;color:#555">${v('g-sell-addr')}<br>GSTIN: ${v('g-sell-gstin')||'—'}</span></div>
+      <div><div style="font-size:9px;color:#999;text-transform:uppercase;margin-bottom:3px">Bill To</div><strong>${v('g-buy-name')||'Customer'}</strong><br><span style="font-size:11px;color:#555">${v('g-buy-addr')||'—'}<br>GSTIN: ${v('g-buy-gstin')||'—'}</span></div>
+    </div>
+    <div class="bill-section" style="padding:0"><table class="bill-items-table"><thead><tr><th>#</th><th>Description</th><th align="right">Qty</th><th align="right">Rate</th><th align="right">Taxable</th><th align="right">GST%</th>${gstHeader}<th align="right">Total</th></tr></thead><tbody>${rowsHtml||'<tr><td colspan="9" style="text-align:center;padding:18px">Add items</td></tr>'}</tbody></table></div>
+    <div class="bill-totals"><div class="bill-total-row"><span>Subtotal (Taxable)</span><span>₹${subtotal.toFixed(2)}</span></div>${discount>0?`<div class="bill-total-row"><span>Discount</span><span style="color:#ff4757">-₹${discount.toFixed(2)}</span></div>`:''}${gstTotals}<div class="bill-total-row grand"><span>GRAND TOTAL</span><span>₹${grandTotal.toFixed(2)}</span></div></div>
+  `;
+}
+function printBill(){window.print()}
+
+/* ============================================================
+   STOCK MONITOR FLOWCHART
+   ============================================================ */
+function drawFlowChart(){
+  const canvas = document.getElementById('flow-canvas');
+  const svg = document.getElementById('flow-svg');
+  if(!canvas||!svg) return;
+  canvas.innerHTML = '';
+  canvas.appendChild(svg);
+  svg.innerHTML = `<defs><marker id="arrowhead" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="#2a3347"/></marker></defs>`;
+
+  const out=items.filter(i=>getStatus(i)==='out').length;
+  const low=items.filter(i=>getStatus(i)==='low').length;
+  const ok=items.filter(i=>getStatus(i)==='ok').length;
+  const totalVal=items.reduce((s,i)=>s+i.stock*i.price,0);
+
+  // Node definitions: [id, x, y, label, sublabel, class]
+  const nodes = [
+    ['n-start',   205, 10,  'START',              'Monitor triggered',      'fn-start'],
+    ['n-load',    185, 85,  '📦 Load Inventory',  items.length+' items',    'fn-process'],
+    ['n-loop',    185, 165, '🔁 For Each Item',   'iterate all SKUs',       'fn-process'],
+    ['n-chk1',   175, 250, '❓ stock === 0?',     'Out of stock check',     'fn-decision'],
+    ['n-out',    20,  335, '🔴 Flag OUT',         out+' items',             'fn-action-red'],
+    ['n-chk2',   220, 335, '❓ stock ≤ reorder?', 'Low stock check',        'fn-decision'],
+    ['n-low',    75,  420, '🟡 Flag LOW',         low+' items',             'fn-action-yellow'],
+    ['n-ok',     295, 420, '🟢 Flag OK',          ok+' items',              'fn-action-green'],
+    ['n-reord',  50,  505, '📋 Calc Reorder Qty', 'max − stock',            'fn-action-blue'],
+    ['n-alert',  185, 505, '🔔 Send Alerts',      'notify team',            'fn-process'],
+    ['n-sync',   185, 585, '☁ Sync to Sheet',    '₹'+totalVal.toLocaleString('en-IN',{maximumFractionDigits:0}), 'fn-process'],
+    ['n-end',    205, 660, 'END',                 'cycle complete',          'fn-end'],
+  ];
+
+  nodes.forEach(([id,x,y,label,sub,cls])=>{
+    const div = document.createElement('div');
+    div.id=id; div.className='fn '+cls;
+    div.style.left=x+'px'; div.style.top=y+'px';
+    div.innerHTML=`<span>${label}</span><span class="fn-label">${sub}</span>`;
+    canvas.appendChild(div);
+  });
+
+  // Canvas size
+  canvas.style.height='720px';
+
+  // Arrows: [x1,y1,x2,y2, label]
+  setTimeout(()=>{
+    const arrows=[
+      ['n-start','n-load',''],
+      ['n-load','n-loop',''],
+      ['n-loop','n-chk1',''],
+      ['n-chk1','n-out','YES'],
+      ['n-chk1','n-chk2','NO'],
+      ['n-chk2','n-low','YES'],
+      ['n-chk2','n-ok','NO'],
+      ['n-out','n-reord',''],
+      ['n-low','n-reord',''],
+      ['n-reord','n-alert',''],
+      ['n-ok','n-alert',''],
+      ['n-alert','n-sync',''],
+      ['n-sync','n-end',''],
+    ];
+    arrows.forEach(([a,b,lbl])=>{
+      const elA=document.getElementById(a), elB=document.getElementById(b);
+      if(!elA||!elB) return;
+      const ax=elA.offsetLeft+elA.offsetWidth/2, ay=elA.offsetTop+elA.offsetHeight;
+      const bx=elB.offsetLeft+elB.offsetWidth/2, by=elB.offsetTop;
+      const path=document.createElementNS('http://www.w3.org/2000/svg','path');
+      const mx=(ax+bx)/2, my=(ay+by)/2;
+      path.setAttribute('d',`M${ax},${ay} C${ax},${my} ${bx},${my} ${bx},${by}`);
+      path.setAttribute('stroke','#2a3347');
+      path.setAttribute('stroke-width','1.8');
+      path.setAttribute('fill','none');
+      path.setAttribute('marker-end','url(#arrowhead)');
+      svg.appendChild(path);
+      if(lbl){
+        const txt=document.createElementNS('http://www.w3.org/2000/svg','text');
+        txt.setAttribute('x',mx+4); txt.setAttribute('y',my-3);
+        txt.setAttribute('fill','#7a8ba0'); txt.setAttribute('font-size','10');
+        txt.setAttribute('font-family','DM Sans,sans-serif');
+        txt.textContent=lbl; svg.appendChild(txt);
+      }
+    });
+    svg.setAttribute('viewBox',`0 0 ${canvas.offsetWidth} 730`);
+  },120);
+}
+
+function runMonitorAlgo(){
+  const out=items.filter(i=>getStatus(i)==='out');
+  const low=items.filter(i=>getStatus(i)==='low');
+  const ok=items.filter(i=>getStatus(i)==='ok');
+
+  // Output summary
+  const outEl=document.getElementById('algo-output-list');
+  if(outEl) outEl.innerHTML=[
+    ['Total Items',items.length,'var(--text)'],
+    ['Out of Stock',out.length,'var(--danger)'],
+    ['Low Stock',low.length,'var(--warn)'],
+    ['Healthy',ok.length,'var(--accent)'],
+    ['Total Value','₹'+items.reduce((s,i)=>s+i.stock*i.price,0).toLocaleString('en-IN',{maximumFractionDigits:0}),'var(--blue)'],
+  ].map(([l,v,c])=>`<div class="card-row"><span class="card-label">${l}</span><span class="card-val" style="color:${c}">${v}</span></div>`).join('');
+
+  const monItem=(i,extra='')=>`<div class="mon-item">
+    <div class="mon-dot" style="background:${getStatus(i)==='out'?'var(--danger)':getStatus(i)==='low'?'var(--warn)':'var(--accent)'}"></div>
+    <div class="mon-name">${i.name}<div style="font-size:10px;color:var(--muted);font-family:'DM Mono',monospace">${i.sku}${extra}</div></div>
+    <div class="mon-stock" style="color:${getStatus(i)==='out'?'var(--danger)':getStatus(i)==='low'?'var(--warn)':'var(--accent)'}">${i.stock}</div>
+  </div>`;
+
+  const outListEl=document.getElementById('mon-out-list');
+  if(outListEl) outListEl.innerHTML=out.length?out.map(i=>monItem(i)).join(''):'<div style="color:var(--muted);font-size:12px">🎉 None out of stock</div>';
+
+  const lowListEl=document.getElementById('mon-low-list');
+  if(lowListEl) lowListEl.innerHTML=low.length?low.map(i=>monItem(i,` · reorder ${i.maxCapacity-i.stock}`)).join(''):'<div style="color:var(--muted);font-size:12px">✅ All above reorder point</div>';
+
+  const okListEl=document.getElementById('mon-ok-list');
+  if(okListEl) okListEl.innerHTML=ok.length?ok.slice(0,5).map(i=>monItem(i)).join('')+(ok.length>5?`<div style="color:var(--muted);font-size:11px;padding:6px 0">+${ok.length-5} more healthy items</div>`:''):'<div style="color:var(--muted);font-size:12px">No items yet</div>';
+
+  drawFlowChart();
+  toast('🔄','Monitor algorithm ran — results updated!');
+}
+
+
+
+/* ============================================================
+   PRODUCT VARIANTS  — Multi-Attribute Matrix System
+   ============================================================ */
+let variants    = JSON.parse(localStorage.getItem('sf_variants')||'{}');
+let varAxes     = [];
+let pendingMatrix = {pid:null, rows:[]};
+let varFilter   = 'all';
+let dismissedNotifs = new Set(JSON.parse(localStorage.getItem('sf_notif_dismissed')||'[]'));
+
+// ── Drawer open/close ──────────────────────────────────────
+function openVarDrawer(pid){
+  document.getElementById('var-drawer').classList.add('open');
+  document.getElementById('var-scrim').classList.add('show');
+  populateVarProductSelect();
+  if(pid){ document.getElementById('var-drawer-title').textContent='Edit Variants'; editVariant(pid); }
+  else     document.getElementById('var-drawer-title').textContent='Add Variants';
+}
+function closeVarDrawer(){
+  document.getElementById('var-drawer').classList.remove('open');
+  document.getElementById('var-scrim').classList.remove('show');
+}
+
+// ── Filter ────────────────────────────────────────────────
+function setVarFilter(f, btn){
+  varFilter = f;
+  document.querySelectorAll('.var-fchip').forEach(b=>b.classList.remove('on'));
+  if(btn) btn.classList.add('on');
+  renderVarCards();
+}
+
+// ── Dismiss notifications ─────────────────────────────────
+function dismissNotif(key){
+  dismissedNotifs.add(key);
+  localStorage.setItem('sf_notif_dismissed', JSON.stringify([...dismissedNotifs]));
+  const el = document.getElementById('vn-'+key);
+  if(el){ el.classList.add('gone'); setTimeout(renderNotifRail, 250); }
+}
+function clearDismissedNotifs(){
+  dismissedNotifs.clear();
+  localStorage.setItem('sf_notif_dismissed','[]');
+  renderNotifRail();
+}
+
+// ── Notification rail ─────────────────────────────────────
+function renderNotifRail(){
+  const rail  = document.getElementById('var-notif-rail');
+  const sub   = document.getElementById('rail-subtitle');
+  const pills = document.getElementById('rail-pills');
+  if(!rail) return;
+
+  const all    = getAllVariantAlerts();
+  const active = all.filter(a=>!dismissedNotifs.has(a.pid+'|'+a.idx));
+  const outN   = active.filter(a=>a.status==='out').length;
+  const lowN   = active.filter(a=>a.status==='low').length;
+  const dimN   = dismissedNotifs.size;
+
+  if(sub) sub.textContent = active.length
+    ? `${outN?outN+' out of stock · ':''}${lowN?lowN+' running low':''}`
+    : dimN ? `All clear — ${dimN} dismissed` : 'All stocks healthy ✅';
+
+  if(pills) pills.innerHTML = [
+    outN ? `<span style="background:color-mix(in srgb,var(--danger) 18%,transparent);color:var(--danger);border-radius:99px;padding:2px 9px;font-size:10px;font-weight:700">${outN} OUT</span>` : '',
+    lowN ? `<span style="background:color-mix(in srgb,var(--warn) 18%,transparent);color:var(--warn);border-radius:99px;padding:2px 9px;font-size:10px;font-weight:700">${lowN} LOW</span>` : '',
+    dimN ? `<span style="background:var(--surface2);color:var(--muted);border-radius:99px;padding:2px 9px;font-size:10px">${dimN} hidden</span>` : ''
+  ].join('');
+
+  if(!active.length){
+    rail.innerHTML=`<div style="text-align:center;padding:30px 12px;color:var(--muted);font-size:12px">
+      <div style="font-size:28px;margin-bottom:8px">✅</div>
+      <div>All variant stocks healthy!</div>
+      ${dimN?`<button onclick="clearDismissedNotifs()" style="margin-top:10px;background:none;border:1px solid var(--border);border-radius:6px;color:var(--muted);cursor:pointer;font-size:11px;padding:4px 12px">Restore ${dimN} dismissed</button>`:''}
+    </div>`;
+    return;
+  }
+
+  // Sort: out first
+  active.sort((a,b)=>(b.status==='out')-(a.status==='out'));
+
+  rail.innerHTML = active.map(({pid,idx,item,attr,status})=>{
+    const key   = pid+'|'+idx;
+    const isOut = status==='out';
+    const rpt   = attr.reorderPoint??5;
+    const combo = attr.labels ? attr.labels.join(' / ') : (attr.value||'');
+    return`<div class="var-notif ${isOut?'nout':'nlow'}" id="vn-${key}">
+      <button class="var-notif-x" onclick="event.stopPropagation();dismissNotif('${key}')" title="Dismiss">✕</button>
+      <div style="font-size:10px;color:var(--muted);margin-bottom:2px">${item.name}</div>
+      <div style="font-size:13px;font-weight:700;color:${isOut?'var(--danger)':'var(--warn)'};margin-bottom:2px">${combo}</div>
+      ${attr.sku?`<div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);margin-bottom:4px">${attr.sku}</div>`:''}
+      <div style="font-size:12px;color:${isOut?'var(--danger)':'var(--warn)'}">
+        ${isOut ? '🔴 Out of stock' : `🟡 ${attr.stock} left  ·  min ${rpt}`}
+      </div>
+      <div style="display:flex;gap:6px;margin-top:8px">
+        <button onclick="event.stopPropagation();variantAdjustStock(${pid},${idx},${rpt})" 
+          style="flex:1;padding:5px 0;background:color-mix(in srgb,var(--accent) 14%,transparent);border:1px solid var(--accent);border-radius:6px;color:var(--accent);cursor:pointer;font-size:11px;font-weight:700">
+          +${rpt} Restock
+        </button>
+        <button onclick="event.stopPropagation();openVarDrawer(${pid})"
+          style="padding:5px 10px;background:var(--surface2);border:1px solid var(--border);border-radius:6px;color:var(--muted);cursor:pointer;font-size:11px">
+          Edit
+        </button>
+        <button onclick="event.stopPropagation();jumpToCard(${pid})"
+          style="padding:5px 8px;background:var(--surface2);border:1px solid var(--border);border-radius:6px;color:var(--muted);cursor:pointer;font-size:11px" title="Jump to card">
+          ↗
+        </button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ── Sidebar index ──────────────────────────────────────────
+function renderVarIndex(){
+  const el = document.getElementById('var-index-list');
+  if(!el) return;
+  const keys = Object.keys(variants);
+  if(!keys.length){ el.innerHTML='<div style="color:var(--muted);font-size:12px;padding:20px 8px;text-align:center">No products yet</div>'; return; }
+  const allAlerts = getAllVariantAlerts();
+  el.innerHTML = keys.map(pid=>{
+    const item=items.find(i=>i.id==pid); if(!item) return '';
+    const combos=(variants[pid].combos||[]);
+    const pa=allAlerts.filter(a=>a.pid==pid);
+    const outN=pa.filter(a=>a.status==='out').length;
+    const lowN=pa.filter(a=>a.status==='low').length;
+    const dotC=outN?'var(--danger)':lowN?'var(--warn)':'var(--accent)';
+    const badge=outN?`<span style="margin-left:auto;background:color-mix(in srgb,var(--danger) 20%,transparent);color:var(--danger);border-radius:99px;padding:1px 7px;font-size:10px;font-weight:700">${outN}</span>`
+      :lowN?`<span style="margin-left:auto;background:color-mix(in srgb,var(--warn) 20%,transparent);color:var(--warn);border-radius:99px;padding:1px 7px;font-size:10px;font-weight:700">${lowN}</span>`:'';
+    return`<div class="var-idx-item" id="idx-${pid}" onclick="jumpToCard(${pid})">
+      <span class="var-idx-dot" style="background:${dotC}"></span>
+      <div style="flex:1;min-width:0">
+        <div style="font-size:12px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${item.name}</div>
+        <div style="font-size:10px;color:var(--muted)">${combos.length} combos</div>
+      </div>
+      ${badge}
+    </div>`;
+  }).join('');
+}
+
+function jumpToCard(pid){
+  const card = document.getElementById('vcard-'+pid);
+  if(card){ card.scrollIntoView({behavior:'smooth',block:'start'}); }
+  document.querySelectorAll('.var-idx-item').forEach(x=>x.classList.remove('active'));
+  const idx = document.getElementById('idx-'+pid);
+  if(idx) idx.classList.add('active');
+}
+
+// ── Axis builder ──────────────────────────────────────────
+function addVarAxis(name='', values=[], isColor=false){
+  const id='ax'+Date.now();
+  varAxes.push({id,name,values,isColor});
+  renderAxes();
+}
+function removeVarAxis(id){ varAxes=varAxes.filter(a=>a.id!==id); renderAxes(); }
+function addAxisValue(id, label, color='#00e5a0'){
+  const ax=varAxes.find(a=>a.id===id); if(!ax||!label.trim()) return;
+  if(ax.values.find(v=>v.label.toLowerCase()===label.trim().toLowerCase())){ toast('⚠️','Already exists'); return; }
+  ax.values.push({label:label.trim(),color}); renderAxes();
+}
+function removeAxisValue(id,i){ const ax=varAxes.find(a=>a.id===id); if(ax){ax.values.splice(i,1);renderAxes();} }
+function addAxisValueFromInput(id){
+  const inp=document.getElementById('inp-'+id), col=document.getElementById('col-'+id);
+  if(!inp||!inp.value.trim()) return;
+  addAxisValue(id,inp.value.trim(),col?col.value:'#00e5a0'); inp.value='';
+}
+
+function renderAxes(){
+  const c=document.getElementById('var-axes-container'); if(!c) return;
+  c.innerHTML=varAxes.map(ax=>{
+    const tags=ax.values.map((v,i)=>`
+      <span class="var-axis-tag" style="${ax.isColor?`border-color:${v.color};background:${v.color}22`:''}">
+        ${ax.isColor?`<span style="width:8px;height:8px;border-radius:50%;background:${v.color};border:1px solid rgba(255,255,255,.2);flex-shrink:0"></span>`:''}
+        ${v.label}<button class="var-axis-tagx" onclick="removeAxisValue('${ax.id}',${i})">×</button>
+      </span>`).join('');
+    return`<div class="var-axis" id="${ax.id}">
+      <div style="display:flex;align-items:center;gap:7px;margin-bottom:9px">
+        <input class="var-axis-name-inp" value="${ax.name}" placeholder="Attribute name (e.g. Color)"
+          oninput="varAxes.find(a=>a.id==='${ax.id}').name=this.value">
+        <label style="display:flex;align-items:center;gap:4px;font-size:11px;color:var(--muted);cursor:pointer;white-space:nowrap">
+          <input type="checkbox" ${ax.isColor?'checked':''} onchange="varAxes.find(a=>a.id==='${ax.id}').isColor=this.checked;renderAxes()"> Colours
+        </label>
+        <button onclick="removeVarAxis('${ax.id}')" style="background:none;border:1px solid var(--border);border-radius:6px;color:var(--danger);cursor:pointer;padding:4px 7px;font-size:12px;flex-shrink:0">✕</button>
+      </div>
+      <div style="display:flex;flex-wrap:wrap;gap:4px;min-height:24px;margin-bottom:8px">${tags||'<span style="color:var(--muted);font-size:11px;padding:3px 0">No values — type below</span>'}</div>
+      <div style="display:flex;gap:6px">
+        <input class="var-axis-valinp" id="inp-${ax.id}" placeholder="Value, then Enter"
+          onkeydown="if(event.key==='Enter'){event.preventDefault();addAxisValueFromInput('${ax.id}')}">
+        ${ax.isColor?`<input type="color" class="var-axis-colinp" id="col-${ax.id}" value="#00e5a0">`:''}
+        <button class="btn btn-ghost btn-sm" onclick="addAxisValueFromInput('${ax.id}')" style="font-size:12px;flex-shrink:0">Add</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ── Presets ────────────────────────────────────────────────
+function applyPreset(preset){
+  varAxes=[];
+  const P={
+    bandana:[
+      {name:'Color',isColor:true,values:[{label:'Red',color:'#ff4757'},{label:'Blue',color:'#5eb8ff'},{label:'Pink',color:'#ff6b9d'},{label:'Yellow',color:'#ffd166'},{label:'Green',color:'#34a853'},{label:'Purple',color:'#c084fc'}]},
+      {name:'Size',isColor:false,values:[{label:'XS'},{label:'S'},{label:'M'},{label:'L'},{label:'XL'}]}
+    ],
+    tshirt:[
+      {name:'Color',isColor:true,values:[{label:'White',color:'#e8edf5'},{label:'Black',color:'#1a1a2e'},{label:'Navy',color:'#2d3a6b'},{label:'Red',color:'#ff4757'}]},
+      {name:'Size',isColor:false,values:[{label:'XS'},{label:'S'},{label:'M'},{label:'L'},{label:'XL'},{label:'XXL'}]}
+    ],
+    shoes:[
+      {name:'Color',isColor:true,values:[{label:'Black',color:'#1a1a2e'},{label:'White',color:'#e8edf5'},{label:'Brown',color:'#8B4513'}]},
+      {name:'Size',isColor:false,values:[{label:'6'},{label:'7'},{label:'8'},{label:'9'},{label:'10'},{label:'11'}]}
+    ],
+    colorsonly:[{name:'Color',isColor:true,values:[{label:'Red',color:'#ff4757'},{label:'Blue',color:'#5eb8ff'},{label:'Green',color:'#34a853'},{label:'Black',color:'#1a1a2e'},{label:'White',color:'#e8edf5'},{label:'Yellow',color:'#ffd166'}]}],
+    sizesonly:[{name:'Size',isColor:false,values:[{label:'XS'},{label:'S'},{label:'M'},{label:'L'},{label:'XL'},{label:'XXL'}]}]
+  };
+  (P[preset]||[]).forEach(a=>varAxes.push({id:'ax'+Date.now()+Math.random().toString(36).slice(2,5),name:a.name,values:a.values,isColor:a.isColor}));
+  renderAxes();
+  toast('✅','Preset loaded — click Generate!');
+}
+
+// ── Cartesian product ──────────────────────────────────────
+function cartesian(axes){
+  if(!axes.length) return [[]];
+  const [first,...rest]=axes; const rc=cartesian(rest);
+  return first.values.flatMap(v=>rc.map(c=>[v,...c]));
+}
+
+// ── Generate matrix ────────────────────────────────────────
+function generateMatrix(){
+  const pid=document.getElementById('var-product-sel').value;
+  if(!pid){toast('⚠️','Select a product first');return;}
+  if(!varAxes.length){toast('⚠️','Add at least one attribute');return;}
+  if(varAxes.some(a=>!a.values.length)){toast('⚠️','Each attribute needs at least one value');return;}
+
+  const item=items.find(i=>i.id==pid);
+  const dStock   =parseInt(document.getElementById('var-default-stock').value)||0;
+  const dReorder =parseInt(document.getElementById('var-default-reorder').value)||5;
+  const dCost    =parseFloat(document.getElementById('var-default-cost').value)||0;
+  const dPrice   =parseFloat(document.getElementById('var-default-price').value)||(item?item.price:0);
+  const parentSku=item?item.sku:'';
+  const existing =(variants[pid]?variants[pid].combos:[]);
+  const exMap={};
+  existing.forEach(c=>{exMap[c.key]=c;});
+
+  const rows=cartesian(varAxes).map(combo=>{
+    const key=combo.map(v=>v.label).join('|');
+    const labels=combo.map(v=>v.label);
+    const skuSuffix='-'+labels.map(l=>l.toUpperCase().replace(/\s+/g,'')).join('-');
+    const colorVal=combo.find((_,i)=>varAxes[i].isColor);
+    const ex=exMap[key];
+    return{key,labels,sku:parentSku+skuSuffix,barcode:ex?ex.barcode||'':'',stock:ex?ex.stock:dStock,reorderPoint:ex?ex.reorderPoint:dReorder,cost:ex?(ex.cost??dCost):dCost,sellPrice:ex?(ex.sellPrice??dPrice):dPrice,color:colorVal?colorVal.color:'#00e5a0'};
+  });
+
+  renderMatrixEditor(pid,rows);
+  document.getElementById('var-matrix-editor').style.display='block';
+}
+
+function renderMatrixEditor(pid,rows){
+  pendingMatrix={pid,rows};
+  const item=items.find(i=>i.id==pid);
+  document.getElementById('matrix-editor-title').textContent=(item?item.name:'Product')+' — '+rows.length+' combinations';
+  document.getElementById('matrix-editor-sub').textContent=varAxes.map(a=>a.name).join(' × ')+' · set stock, cost & sell price per row';
+
+  const axNames=varAxes.map(a=>a.name);
+  const thead=`<thead><tr>
+    ${axNames.map(n=>`<th class="mx-th">${n}</th>`).join('')}
+    <th class="mx-th">SKU</th><th class="mx-th">Barcode</th>
+    <th class="mx-th">Stock</th><th class="mx-th" style="color:var(--warn)">Min⚠</th>
+    <th class="mx-th" style="color:var(--blue)">Cost₹</th><th class="mx-th" style="color:var(--accent)">Sell₹</th>
+    <th class="mx-th" style="color:var(--green)">Margin</th>
+  </tr></thead>`;
+
+  const tbody='<tbody>'+rows.map((row,rIdx)=>{
+    const margin=row.sellPrice>0?Math.round((row.sellPrice-row.cost)/row.sellPrice*100):0;
+    const mc=margin>=40?'var(--accent)':margin>=20?'var(--warn)':'var(--danger)';
+    const lblCells=row.labels.map((lbl,i)=>{
+      const ax=varAxes[i]||{}; const av=(ax.values||[]).find(v=>v.label===lbl)||{};
+      return`<td class="mx-td"><div style="display:flex;align-items:center;gap:5px">
+        ${ax.isColor?`<span style="width:8px;height:8px;border-radius:50%;background:${av.color||'#888'};border:1px solid rgba(255,255,255,.2);flex-shrink:0"></span>`:''}
+        <span style="font-size:12px">${lbl}</span></div></td>`;
+    }).join('');
+    return`<tr id="mrow-${rIdx}">
+      ${lblCells}
+      <td class="mx-td"><span class="mx-sku">${row.sku}</span></td>
+      <td class="mx-td"><input class="mx-barinp" data-r="${rIdx}" data-f="barcode" value="${row.barcode}" placeholder="EAN"></td>
+      <td class="mx-td"><input class="mx-inp" data-r="${rIdx}" data-f="stock" type="number" min="0" value="${row.stock}"></td>
+      <td class="mx-td"><input class="mx-inp" data-r="${rIdx}" data-f="reorderPoint" type="number" min="0" value="${row.reorderPoint}" style="border-color:var(--warn)"></td>
+      <td class="mx-td"><input class="mx-inp" data-r="${rIdx}" data-f="cost" type="number" min="0" step="0.01" value="${row.cost}" style="width:65px;border-color:var(--blue)"></td>
+      <td class="mx-td"><input class="mx-inp" data-r="${rIdx}" data-f="sellPrice" type="number" min="0" step="0.01" value="${row.sellPrice}" style="width:65px;border-color:var(--accent)"></td>
+      <td class="mx-td" id="mg-${rIdx}" style="text-align:center;font-family:'DM Mono',monospace;font-size:12px;font-weight:700;color:${mc}">${margin}%</td>
+    </tr>`;
+  }).join('')+'</tbody>';
+
+  document.getElementById('matrix-table').innerHTML=thead+tbody;
+  document.querySelectorAll('#matrix-table input[data-r]').forEach(inp=>{
+    inp.addEventListener('input',()=>{
+      const r=parseInt(inp.dataset.r), f=inp.dataset.f;
+      pendingMatrix.rows[r][f]=f==='barcode'?inp.value:(parseFloat(inp.value)||0);
+      if(f==='cost'||f==='sellPrice'){
+        const row=pendingMatrix.rows[r];
+        const m=row.sellPrice>0?Math.round((row.sellPrice-row.cost)/row.sellPrice*100):0;
+        const mc=m>=40?'var(--accent)':m>=20?'var(--warn)':'var(--danger)';
+        const mg=document.getElementById('mg-'+r);
+        if(mg){mg.textContent=m+'%';mg.style.color=mc;}
+      }
+    });
+  });
+}
+
+// ── Save ───────────────────────────────────────────────────
+function saveVariants(){
+  const{pid,rows}=pendingMatrix;
+  if(!pid||!rows.length){toast('⚠️','Generate combinations first');return;}
+  variants[pid]={axes:varAxes.map(a=>({name:a.name,isColor:a.isColor,values:a.values})),combos:rows};
+  const parent=items.find(i=>i.id==pid);
+  if(parent){
+    parent.stock=rows.reduce((s,r)=>s+r.stock,0);
+    const tw=rows.reduce((s,r)=>s+(r.stock||1),0);
+    const ws=rows.reduce((s,r)=>s+(r.sellPrice??0)*(r.stock||1),0);
+    if(tw>0&&ws>0) parent.price=parseFloat((ws/tw).toFixed(2));
+  }
+  localStorage.setItem('sf_variants',JSON.stringify(variants));
+  closeVarDrawer();
+  renderVarCards();
+  populateVarProductSelect();
+  render();
+  syncToSheet();
+  toast('✅',rows.length+' combinations saved!');
+}
+
+// ── Populate product select ────────────────────────────────
+function populateVarProductSelect(){
+  const sel=document.getElementById('var-product-sel'); if(!sel) return;
+  const cur=sel.value;
+  sel.innerHTML='<option value="">— Select a product —</option>'+
+    items.map(i=>`<option value="${i.id}">${i.name} (${i.sku})${variants[i.id]?' ✓':''}</option>`).join('');
+  sel.value=cur;
+  sel.onchange=()=>{if(variants[sel.value]) editVariant(sel.value);};
+}
+
+function clearVarForm(){
+  const sel=document.getElementById('var-product-sel'); if(sel) sel.value='';
+  varAxes=[]; renderAxes(); pendingMatrix={pid:null,rows:[]};
+  document.getElementById('var-matrix-editor').style.display='none';
+}
+
+function editVariant(pid){
+  const v=variants[pid]; if(!v) return;
+  const sel=document.getElementById('var-product-sel'); if(sel) sel.value=pid;
+  varAxes=(v.axes||[]).map(a=>({id:'ax'+Date.now()+Math.random().toString(36).slice(2,5),name:a.name,isColor:a.isColor,values:a.values}));
+  renderAxes();
+  generateMatrix();
+}
+
+// ── Stock adjust ───────────────────────────────────────────
+function variantAdjustStock(pid,comboIdx,delta){
+  if(!variants[pid]) return;
+  const combo=variants[pid].combos[comboIdx]; if(!combo) return;
+  const old=combo.stock;
+  combo.stock=Math.max(0,combo.stock+delta);
+  const parent=items.find(i=>i.id==pid);
+  if(parent){
+    const combos=variants[pid].combos;
+    parent.stock=combos.reduce((s,c)=>s+c.stock,0);
+    const tw=combos.reduce((s,c)=>s+(c.stock||1),0);
+    const ws=combos.reduce((s,c)=>s+((c.sellPrice??0)*(c.stock||1)),0);
+    if(tw>0&&ws>0) parent.price=parseFloat((ws/tw).toFixed(2));
+  }
+  localStorage.setItem('sf_variants',JSON.stringify(variants));
+  const scanLog={timestamp:new Date().toISOString(),mode:delta>0?'add':'deduct',name:(parent?.name||'')+'['+combo.labels.join('/')+']',sku:combo.sku,barcode:combo.barcode||'',qty:Math.abs(delta),before:old,after:combo.stock,variantValue:combo.labels.join('/'),parentSku:parent?.sku||''};
+  renderVarCards();
+  render();
+  syncToSheet(scanLog);
+  toast(delta>0?'✅':'📤',combo.labels.join('/')+': '+old+'→'+combo.stock);
+}
+
+function variantQuickSet(pid,idx){
+  const combo=variants[pid]?.combos[idx]; if(!combo) return;
+  const v=prompt(`Exact stock for "${combo.labels.join('/')}":`,combo.stock);
+  if(v===null) return;
+  const n=parseInt(v);
+  if(isNaN(n)||n<0){toast('⚠️','Invalid');return;}
+  const d=n-combo.stock; if(d!==0) variantAdjustStock(pid,idx,d);
+}
+
+// ── Status helpers ─────────────────────────────────────────
+function getVarStatus(c){ if(c.stock===0) return 'out'; if(c.stock<=(c.reorderPoint??5)) return 'low'; return 'ok'; }
+function getAllVariantAlerts(){
+  const a=[];
+  for(const [pid,vData] of Object.entries(variants)){
+    const item=items.find(i=>i.id==pid); if(!item) continue;
+    (vData.combos||vData.attrs||[]).forEach((c,idx)=>{
+      const st=getVarStatus(c); if(st!=='ok') a.push({pid,idx,item,attr:c,status:st});
+    });
+  }
+  return a;
+}
+
+// ── Render alerts tab ──────────────────────────────────────
+function renderAlerts(){
+  const al=items.filter(i=>getStatus(i)!=='ok').sort((a,b)=>getStatus(a)==='out'?-1:1);
+  const el=document.getElementById('alerts-content');
+  if(!al.length){el.innerHTML='<div style="color:var(--muted);font-size:13px">🎉 All parent items well stocked!</div>';}
+  else{el.innerHTML=al.map(i=>{const c=getStatus(i)==='out';return`<div class="alert-item ${c?'alert-crit':'alert-warn'}"><span>${c?'🔴':'🟡'}</span><div class="alert-text"><strong>${i.name}</strong> (${i.sku}) — ${c?'OUT OF STOCK':'Low: '+i.stock+' left (reorder pt: '+i.reorderPoint+')'}</div><span class="alert-action" onclick="openModal(${i.id})">Restock →</span></div>`}).join('');}
+  const va=getAllVariantAlerts();
+  const vel=document.getElementById('var-alerts-content');
+  const badge=document.getElementById('var-alert-badge');
+  if(vel){
+    if(!va.length){vel.innerHTML='<div style="color:var(--muted);font-size:13px">🎉 All variants well stocked!</div>';if(badge)badge.style.display='none';}
+    else{
+      if(badge){badge.textContent=va.length;badge.style.display='inline';}
+      vel.innerHTML=va.map(({pid,idx,item,attr,status})=>{
+        const isOut=status==='out'; const rpt=attr.reorderPoint??5;
+        const name=attr.labels?attr.labels.join(' / '):(attr.value||'');
+        return`<div class="alert-item ${isOut?'alert-crit':'alert-warn'}" style="margin-bottom:8px">
+          <span>${isOut?'🔴':'🟡'}</span>
+          <div class="alert-text"><strong>${item.name}</strong> › <span style="color:${isOut?'var(--danger)':'var(--warn)'};font-weight:600">${name}</span><br>
+          ${isOut?`<span style="color:var(--danger);font-weight:700">OUT OF STOCK</span>`:`<span style="color:var(--warn)">Only <strong>${attr.stock}</strong> left (alert ≤${rpt})</span>`}</div>
+          <span class="alert-action" onclick="openVarDrawer(${pid});switchTab('variants',document.querySelectorAll('.tab')[4])">Edit →</span>
+        </div>`;
+      }).join('');
+    }
+  }
+}
+
+function updateAlertCount(){
+  const total=items.filter(i=>getStatus(i)!=='ok').length+getAllVariantAlerts().length;
+  const el=document.getElementById('alert-count');
+  el.textContent=total>0?total:''; el.style.display=total>0?'':'none';
+}
+
+// ── Main render ────────────────────────────────────────────
+function renderVarCards(){
+  const container=document.getElementById('var-cards-container'); if(!container) return;
+  const search=(document.getElementById('var-search')?.value||'').toLowerCase();
+  const allAlerts=getAllVariantAlerts();
+
+  let keys=Object.keys(variants);
+  // Apply filter
+  if(varFilter==='alerts') keys=keys.filter(pid=>allAlerts.some(a=>a.pid==pid));
+  if(varFilter==='out')    keys=keys.filter(pid=>allAlerts.some(a=>a.pid==pid&&a.status==='out'));
+  // Apply search
+  if(search) keys=keys.filter(pid=>{
+    const item=items.find(i=>i.id==pid); if(!item) return false;
+    return item.name.toLowerCase().includes(search)||item.sku.toLowerCase().includes(search);
+  });
+
+  if(!keys.length){
+    const isEmpty=!Object.keys(variants).length;
+    container.innerHTML=`<div style="color:var(--muted);font-size:13px;text-align:center;padding:60px 20px">
+      <div style="font-size:36px;margin-bottom:10px">${isEmpty?'🎨':'🔍'}</div>
+      ${isEmpty?'No variant products yet.<br>Click <strong style="color:var(--accent)">+ Add / Edit Variants</strong>':'No products match filter.'}
+    </div>`;
+    renderVarIndex(); renderNotifRail(); updateAlertCount(); return;
+  }
+
+  container.innerHTML=keys.map(pid=>{
+    const item=items.find(i=>i.id==pid); if(!item) return '';
+    const v=variants[pid]; const combos=v.combos||v.attrs||[]; const axes=v.axes||[];
+    const totalStock   =combos.reduce((s,c)=>s+c.stock,0);
+    const totalCostVal =combos.reduce((s,c)=>s+(c.cost??0)*c.stock,0);
+    const totalSellVal =combos.reduce((s,c)=>s+(c.sellPrice??0)*c.stock,0);
+    const avgMargin    =totalSellVal>0?Math.round((totalSellVal-totalCostVal)/totalSellVal*100):null;
+    const pa           =allAlerts.filter(a=>a.pid==pid);
+    const hasOut       =pa.some(a=>a.status==='out');
+    const cardClass    =hasOut?'critical':pa.length?'alerted':'';
+    const parentSC     =getStatus(item)==='out'?'var(--danger)':getStatus(item)==='low'?'var(--warn)':'var(--accent)';
+    const is2D         =axes.length===2;
+    let comboHtml      ='';
+
+    if(is2D){
+      const ax0=axes[0],ax1=axes[1];
+      const a0vals=ax0.values.map(v=>v.label), a1vals=ax1.values.map(v=>v.label);
+      comboHtml=`<div style="overflow-x:auto"><table style="border-collapse:collapse;font-size:12px;width:100%">
+        <thead><tr>
+          <th style="padding:6px 9px;background:var(--surface2);border:1px solid var(--border);font-size:10px;color:var(--muted);white-space:nowrap">${ax0.name} ↓ / ${ax1.name} →</th>
+          ${a1vals.map(l=>`<th style="padding:6px 9px;background:var(--surface2);border:1px solid var(--border);font-size:11px;font-weight:600;white-space:nowrap">${l}</th>`).join('')}
+        </tr></thead><tbody>`;
+      a0vals.forEach((a0,a0i)=>{
+        const a0v=ax0.values[a0i];
+        comboHtml+=`<tr><td style="padding:6px 9px;border:1px solid var(--border);font-weight:600;background:var(--surface2);white-space:nowrap">
+          ${ax0.isColor?`<span style="width:8px;height:8px;border-radius:50%;background:${a0v.color};border:1px solid rgba(255,255,255,.2);display:inline-block;margin-right:5px"></span>`:''} ${a0}</td>`;
+        a1vals.forEach(a1=>{
+          const key=a0+'|'+a1, cIdx=combos.findIndex(c=>c.key===key);
+          if(cIdx===-1){comboHtml+=`<td style="padding:6px;border:1px solid var(--border);text-align:center;color:var(--muted)">—</td>`;return;}
+          const c=combos[cIdx], st=getVarStatus(c);
+          const sc=st==='out'?'var(--danger)':st==='low'?'var(--warn)':'var(--accent)';
+          const m=c.sellPrice>0?Math.round((c.sellPrice-(c.cost??0))/c.sellPrice*100):null;
+          const mc=m===null?'var(--muted)':m>=40?'var(--accent)':m>=20?'var(--warn)':'var(--danger)';
+          comboHtml+=`<td style="padding:5px 7px;border:1px solid var(--border);text-align:center;background:${st!=='ok'?'color-mix(in srgb,'+sc+' 9%,transparent)':''}">
+            <div style="font-family:'DM Mono',monospace;font-size:14px;font-weight:700;color:${sc}">${c.stock}</div>
+            <div style="font-size:9px;color:var(--muted)">min ${c.reorderPoint??5}</div>
+            ${c.sellPrice>0?`<div style="font-size:9px;margin-top:1px"><span style="color:var(--blue)">₹${(c.cost??0).toFixed(0)}</span><span style="color:var(--muted)">→</span><span style="color:var(--accent)">₹${c.sellPrice.toFixed(0)}</span></div>`:''}
+            ${m!==null?`<div style="font-size:9px;color:${mc};font-weight:700">${m}%</div>`:''}
+            <div style="display:flex;gap:2px;margin-top:4px;justify-content:center">
+              <button onclick="variantAdjustStock(${pid},${cIdx},-1)" style="width:22px;height:22px;background:color-mix(in srgb,var(--danger) 15%,transparent);border:1px solid var(--danger);color:var(--danger);border-radius:4px;cursor:pointer;font-size:13px;padding:0;font-weight:700">−</button>
+              <button onclick="variantQuickSet(${pid},${cIdx})" style="width:22px;height:22px;background:var(--surface2);border:1px solid var(--border);color:var(--muted);border-radius:4px;cursor:pointer;font-size:10px;padding:0">✏</button>
+              <button onclick="variantAdjustStock(${pid},${cIdx},1)" style="width:22px;height:22px;background:color-mix(in srgb,var(--green) 15%,transparent);border:1px solid var(--green);color:var(--green);border-radius:4px;cursor:pointer;font-size:13px;padding:0;font-weight:700">+</button>
+            </div>
+          </td>`;
+        });
+        comboHtml+=`</tr>`;
+      });
+      comboHtml+=`</tbody></table></div>`;
+    } else {
+      comboHtml='<div class="var-grid">'+combos.map((c,cIdx)=>{
+        const st=getVarStatus(c), sc=st==='out'?'var(--danger)':st==='low'?'var(--warn)':'var(--accent)';
+        const barPct=Math.min(100,c.stock/Math.max(c.stock,(c.reorderPoint??5)*3)*100);
+        const m=c.sellPrice>0?Math.round((c.sellPrice-(c.cost??0))/c.sellPrice*100):null;
+        const mc=m===null?'var(--muted)':m>=40?'var(--accent)':m>=20?'var(--warn)':'var(--danger)';
+        return`<div class="var-chip" style="background:${c.color+'18'};border-color:${st!=='ok'?sc:c.color};${st!=='ok'?'box-shadow:0 0 8px '+sc+'33':''}">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:3px">
+            <div style="display:flex;align-items:center;gap:4px">
+              ${c.color&&c.color!=='#00e5a0'?`<span class="var-chip-color" style="background:${c.color}"></span>`:''}
+              <strong style="font-size:12px">${c.labels?c.labels.join('/'):(c.value||'')}</strong>
+            </div>
+            <span style="font-size:11px">${st==='out'?'🔴':st==='low'?'🟡':'🟢'}</span>
+          </div>
+          <div style="font-size:10px;color:var(--muted);font-family:'DM Mono',monospace;margin-bottom:2px">${c.sku||''}</div>
+          <div class="var-chip-bar"><div class="var-chip-bar-fill" style="width:${barPct}%;background:${sc}"></div></div>
+          <div style="color:${sc};font-size:15px;font-weight:700;margin:5px 0">${c.stock} <span style="font-size:10px;font-weight:400;color:var(--muted)">units</span></div>
+          ${(c.cost??0)>0||c.sellPrice>0?`<div style="display:flex;justify-content:space-between;background:var(--surface2);border-radius:5px;padding:4px 7px;margin:4px 0;font-size:10px">
+            <div style="text-align:center"><div style="color:var(--muted);font-size:9px">Cost</div><div style="color:var(--blue);font-family:'DM Mono',monospace;font-weight:600">₹${(c.cost??0).toFixed(0)}</div></div>
+            <div style="text-align:center"><div style="color:var(--muted);font-size:9px">Sell</div><div style="color:var(--accent);font-family:'DM Mono',monospace;font-weight:600">₹${(c.sellPrice??0).toFixed(0)}</div></div>
+            ${m!==null?`<div style="text-align:center"><div style="color:var(--muted);font-size:9px">Margin</div><div style="color:${mc};font-family:'DM Mono',monospace;font-weight:700">${m}%</div></div>`:''}
+          </div>`:''}
+          <div class="var-reorder-badge" style="${st!=='ok'?'border-color:'+sc+';color:'+sc:''}">⚠ Min: ${c.reorderPoint??5}</div>
+          <div style="display:flex;gap:4px;margin-top:6px">
+            <button onclick="variantAdjustStock(${pid},${cIdx},-1)" style="flex:1;background:color-mix(in srgb,var(--danger) 15%,transparent);border:1px solid var(--danger);color:var(--danger);border-radius:5px;cursor:pointer;font-size:14px;padding:3px 0;font-weight:700">−</button>
+            <button onclick="variantQuickSet(${pid},${cIdx})" style="flex:0;background:var(--surface2);border:1px solid var(--border);color:var(--muted);border-radius:5px;cursor:pointer;font-size:10px;padding:3px 7px">✏</button>
+            <button onclick="variantAdjustStock(${pid},${cIdx},1)" style="flex:1;background:color-mix(in srgb,var(--green) 15%,transparent);border:1px solid var(--green);color:var(--green);border-radius:5px;cursor:pointer;font-size:14px;padding:3px 0;font-weight:700">+</button>
+          </div>
+          <div class="var-chip-status" style="background:${sc}"></div>
+        </div>`;
+      }).join('')+'</div>';
+    }
+
+    return`<div class="var-card ${cardClass}" id="vcard-${pid}">
+      <div class="var-card-hd">
+        <div>
+          <div class="var-card-name">${item.name}
+            ${hasOut?`<span style="background:var(--danger);color:#fff;border-radius:99px;padding:1px 8px;font-size:10px;margin-left:6px">${pa.filter(a=>a.status==='out').length} out</span>`:pa.length?`<span style="background:var(--warn);color:#000;border-radius:99px;padding:1px 8px;font-size:10px;margin-left:6px">${pa.length} low</span>`:''}
+          </div>
+          <div style="font-size:11px;color:var(--muted);font-family:'DM Mono',monospace;margin-top:2px">
+            ${item.sku} · ${combos.length} combos · ${axes.map(a=>a.name).join(' × ')} · <span style="color:${parentSC}">${item.stock} total units</span>
+          </div>
+        </div>
+        <div style="display:flex;gap:6px">
+          <button class="btn btn-ghost btn-sm" onclick="openVarDrawer(${pid})">✏️ Edit</button>
+          <button class="btn btn-ghost btn-sm" style="color:var(--danger);border-color:var(--danger)" onclick="deleteVariant(${pid})">🗑</button>
+        </div>
+      </div>
+      ${comboHtml}
+      <div class="var-summary">
+        <div class="var-summary-item">Combos: <span>${combos.length}</span></div>
+        <div class="var-summary-item">Stock: <span>${totalStock}</span></div>
+        <div class="var-summary-item">Cost: <span style="color:var(--blue)">₹${totalCostVal.toLocaleString('en-IN',{maximumFractionDigits:0})}</span></div>
+        <div class="var-summary-item">Revenue: <span style="color:var(--accent)">₹${totalSellVal.toLocaleString('en-IN',{maximumFractionDigits:0})}</span></div>
+        ${avgMargin!==null?`<div class="var-summary-item">Avg Margin: <span style="color:${avgMargin>=40?'var(--accent)':avgMargin>=20?'var(--warn)':'var(--danger)'}">${avgMargin}%</span></div>`:''}
+      </div>
+    </div>`;
+  }).join('');
+
+  renderVarIndex();
+  renderNotifRail();
+  updateAlertCount();
+}
+
+function deleteVariant(pid){
+  if(!confirm('Delete all variants for this product?')) return;
+  delete variants[pid];
+  localStorage.setItem('sf_variants',JSON.stringify(variants));
+  renderVarCards(); populateVarProductSelect(); syncToSheet();
+  toast('🗑️','Variants deleted');
+}
+
+function findVariantByBarcode(barcode){
+  for(const [pid,vData] of Object.entries(variants)){
+    const combos=vData.combos||vData.attrs||[];
+    const idx=combos.findIndex(c=>c.barcode===barcode||c.sku===barcode);
+    if(idx!==-1) return{pid,comboIdx:idx,combo:combos[idx]};
+  }
+  return null;
+}
+
+/* ============================================================
+   PRODUCTION RECIPES
+   ============================================================ */
+let recipes = JSON.parse(localStorage.getItem('sf_recipes')||'{}');
+// recipes[itemId] = { batchSize, sellPrice, rawMaterials:[{name,qty,costPerUnit}], labor:[{role,hours,rate}], overhead:[{name,units,costPerUnit}], timeHrs, electricity }
+
+function populateProdSelects(){
+  const sel = document.getElementById('prod-item-sel');
+  const cur = sel.value;
+  sel.innerHTML = '<option value="">— Select finished product —</option>' +
+    items.map(i=>`<option value="${i.id}">${i.name} (${i.sku})${recipes[i.id]?' ✓':''}</option>`).join('');
+  sel.value = cur;
+  if(sel.value){ const it=items.find(x=>x.id==sel.value); if(it) document.getElementById('prod-sell-price').value=it.price; }
+  sel.onchange = () => {
+    const it = items.find(x=>x.id==sel.value);
+    if(it) document.getElementById('prod-sell-price').value = it.price;
+    if(recipes[sel.value]) loadRecipeIntoForm(sel.value);
+  };
+}
+
+function addRawRow(name='',qty=1,cost=0){
+  const row=document.createElement('div'); row.className='prod-row';
+  row.innerHTML=`<input class="prod-input" placeholder="e.g. Wax, Jar, Wick" value="${name}">
+    <input class="prod-input" type="number" min="0" step="0.01" value="${qty}" placeholder="Qty">
+    <input class="prod-input" type="number" min="0" step="0.01" value="${cost}" placeholder="₹">
+    <button class="prod-del" onclick="this.closest('.prod-row').remove()">✕</button>`;
+  document.getElementById('raw-rows-container').appendChild(row);
+}
+function addLaborRow(role='',hrs=1,rate=0){
+  const row=document.createElement('div'); row.className='prod-row';
+  row.innerHTML=`<input class="prod-input" placeholder="e.g. Pouring, Packing" value="${role}">
+    <input class="prod-input" type="number" min="0" step="0.5" value="${hrs}" placeholder="Hrs">
+    <input class="prod-input" type="number" min="0" step="0.5" value="${rate}" placeholder="₹/hr">
+    <button class="prod-del" onclick="this.closest('.prod-row').remove()">✕</button>`;
+  document.getElementById('labor-rows-container').appendChild(row);
+}
+function addOverheadRow(name='',units=1,cost=0){
+  const row=document.createElement('div'); row.className='prod-row';
+  row.innerHTML=`<input class="prod-input" placeholder="e.g. Packaging, Transport" value="${name}">
+    <input class="prod-input" type="number" min="0" step="0.01" value="${units}" placeholder="Units">
+    <input class="prod-input" type="number" min="0" step="0.01" value="${cost}" placeholder="₹">
+    <button class="prod-del" onclick="this.closest('.prod-row').remove()">✕</button>`;
+  document.getElementById('overhead-rows-container').appendChild(row);
+}
+
+function readRows(containerId){
+  const rows=[];
+  document.querySelectorAll('#'+containerId+' .prod-row').forEach(row=>{
+    const ins=row.querySelectorAll('input');
+    rows.push({name:ins[0].value.trim(), qty:parseFloat(ins[1].value)||0, cost:parseFloat(ins[2].value)||0});
+  });
+  return rows.filter(r=>r.name);
+}
+
+function saveRecipe(){
+  const pid = document.getElementById('prod-item-sel').value;
+  if(!pid){ toast('⚠️','Select a product first'); return; }
+  const batchSize  = parseInt(document.getElementById('prod-batch').value)||1;
+  const sellPrice  = parseFloat(document.getElementById('prod-sell-price').value)||0;
+  const timeHrs    = parseFloat(document.getElementById('prod-time-hrs').value)||0;
+  const electricity= parseFloat(document.getElementById('prod-electricity').value)||0;
+  const rawMats    = readRows('raw-rows-container');
+  const labor      = readRows('labor-rows-container');
+  const overhead   = readRows('overhead-rows-container');
+
+  recipes[pid] = {batchSize, sellPrice, rawMaterials:rawMats, labor, overhead, timeHrs, electricity, savedAt: new Date().toISOString()};
+  localStorage.setItem('sf_recipes', JSON.stringify(recipes));
+  renderRecipes();
+  populateProdSelects();
+  syncToSheet();
+  toast('✅','Recipe saved & synced!');
+}
+
+function calcRecipeCost(r){
+  const rawCost      = r.rawMaterials.reduce((s,m)=>s+(m.qty*m.cost),0);
+  const laborCost    = r.labor.reduce((s,l)=>s+(l.qty*l.cost),0);
+  const overheadCost = r.overhead.reduce((s,o)=>s+(o.qty*o.cost),0);
+  const electricityCost = r.electricity||0;
+  const totalBatch   = rawCost+laborCost+overheadCost+electricityCost;
+  const costPerUnit  = r.batchSize>0 ? totalBatch/r.batchSize : 0;
+  const margin       = r.sellPrice>0 ? ((r.sellPrice-costPerUnit)/r.sellPrice*100) : 0;
+  const profit       = r.sellPrice - costPerUnit;
+  return {rawCost, laborCost, overheadCost, electricityCost, totalBatch, costPerUnit, margin, profit};
+}
+
+function loadRecipeIntoForm(pid){
+  const r = recipes[pid]; if(!r) return;
+  document.getElementById('prod-batch').value = r.batchSize||1;
+  document.getElementById('prod-sell-price').value = r.sellPrice||0;
+  document.getElementById('prod-time-hrs').value = r.timeHrs||0;
+  document.getElementById('prod-electricity').value = r.electricity||0;
+  document.getElementById('raw-rows-container').innerHTML='';
+  document.getElementById('labor-rows-container').innerHTML='';
+  document.getElementById('overhead-rows-container').innerHTML='';
+  (r.rawMaterials||[]).forEach(m=>addRawRow(m.name,m.qty,m.cost));
+  (r.labor||[]).forEach(l=>addLaborRow(l.name,l.qty,l.cost));
+  (r.overhead||[]).forEach(o=>addOverheadRow(o.name,o.qty,o.cost));
+}
+
+function clearProdForm(){
+  document.getElementById('prod-item-sel').value='';
+  document.getElementById('prod-batch').value=10;
+  document.getElementById('prod-sell-price').value='';
+  document.getElementById('prod-time-hrs').value=2;
+  document.getElementById('prod-electricity').value=0;
+  document.getElementById('raw-rows-container').innerHTML='';
+  document.getElementById('labor-rows-container').innerHTML='';
+  document.getElementById('overhead-rows-container').innerHTML='';
+  addRawRow(); addRawRow(); addRawRow();
+  addLaborRow();
+  addOverheadRow();
+}
+
+function deleteRecipe(pid){
+  if(!confirm('Delete this recipe?')) return;
+  delete recipes[pid];
+  localStorage.setItem('sf_recipes', JSON.stringify(recipes));
+  renderRecipes(); populateProdSelects(); syncToSheet();
+  toast('🗑️','Recipe deleted');
+}
+
+function renderRecipes(){
+  const container = document.getElementById('prod-cards-container');
+  const keys = Object.keys(recipes);
+  if(!keys.length){
+    container.innerHTML=`<div style="color:var(--muted);font-size:13px;text-align:center;padding:60px 20px"><div style="font-size:32px;margin-bottom:10px">⚙️</div>No recipes yet. Select a product and fill in the costs.</div>`;
+    return;
+  }
+  container.innerHTML = keys.map(pid=>{
+    const item = items.find(i=>i.id==pid);
+    if(!item) return '';
+    const r = recipes[pid];
+    const c = calcRecipeCost(r);
+    const marginColor = c.margin>=40?'var(--accent)':c.margin>=20?'var(--warn)':'var(--danger)';
+    const profitColor = c.profit>=0?'var(--accent)':'var(--danger)';
+
+    const matRows = (r.rawMaterials||[]).map(m=>`<tr>
+      <td>${m.name}</td><td>${m.qty}</td><td>₹${m.cost.toFixed(2)}</td>
+      <td style="color:var(--accent)">₹${(m.qty*m.cost).toFixed(2)}</td></tr>`).join('');
+    const laborRows = (r.labor||[]).map(l=>`<tr>
+      <td>${l.name}</td><td>${l.qty} hrs</td><td>₹${l.cost.toFixed(2)}/hr</td>
+      <td style="color:var(--blue)">₹${(l.qty*l.cost).toFixed(2)}</td></tr>`).join('');
+    const ohRows = (r.overhead||[]).map(o=>`<tr>
+      <td>${o.name}</td><td>${o.qty}</td><td>₹${o.cost.toFixed(2)}</td>
+      <td style="color:var(--warn)">₹${(o.qty*o.cost).toFixed(2)}</td></tr>`).join('');
+
+    return`<div class="prod-card">
+      <div class="prod-card-header">
+        <div>
+          <div class="prod-card-name">${item.name}</div>
+          <div class="prod-card-sub">${item.sku} · Batch: ${r.batchSize} units · ⏱ ${r.timeHrs}hrs/batch</div>
+        </div>
+        <div style="display:flex;gap:7px;align-items:center">
+          <button class="btn btn-ghost btn-sm" onclick="loadRecipeIntoForm(${pid});document.getElementById('prod-item-sel').value='${pid}'">✏️ Edit</button>
+          <button class="btn btn-ghost btn-sm" style="color:var(--danger);border-color:var(--danger)" onclick="deleteRecipe(${pid})">🗑</button>
+        </div>
+      </div>
+
+      <!-- Cost breakdown boxes -->
+      <div class="prod-cost-grid">
+        <div class="prod-cost-box" style="border-top:2px solid var(--accent)">
+          <div class="prod-cost-box-label">Raw Materials</div>
+          <div class="prod-cost-box-val" style="color:var(--accent)">₹${c.rawCost.toFixed(0)}</div>
+          <div style="font-size:10px;color:var(--muted)">per batch</div>
+        </div>
+        <div class="prod-cost-box" style="border-top:2px solid var(--blue)">
+          <div class="prod-cost-box-label">Labour</div>
+          <div class="prod-cost-box-val" style="color:var(--blue)">₹${c.laborCost.toFixed(0)}</div>
+          <div style="font-size:10px;color:var(--muted)">per batch</div>
+        </div>
+        <div class="prod-cost-box" style="border-top:2px solid var(--warn)">
+          <div class="prod-cost-box-label">Overhead+⚡</div>
+          <div class="prod-cost-box-val" style="color:var(--warn)">₹${(c.overheadCost+c.electricityCost).toFixed(0)}</div>
+          <div style="font-size:10px;color:var(--muted)">per batch</div>
+        </div>
+        <div class="prod-cost-box" style="border-top:2px solid ${marginColor}">
+          <div class="prod-cost-box-label">Margin</div>
+          <div class="prod-cost-box-val" style="color:${marginColor}">${c.margin.toFixed(1)}%</div>
+          <div style="font-size:10px;color:${profitColor}">₹${c.profit.toFixed(2)}/unit</div>
+        </div>
+      </div>
+
+      <!-- Margin bar -->
+      <div style="margin-bottom:14px">
+        <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--muted);margin-bottom:4px">
+          <span>Cost/unit: <strong style="color:var(--text)">₹${c.costPerUnit.toFixed(2)}</strong></span>
+          <span>Sell: <strong style="color:var(--text)">₹${r.sellPrice.toFixed(2)}</strong></span>
+          <span>Total batch cost: <strong style="color:var(--text)">₹${c.totalBatch.toFixed(2)}</strong></span>
+        </div>
+        <div class="prod-margin-bar"><div class="prod-margin-bar-fill" style="width:${Math.max(0,Math.min(100,c.margin))}%;background:${marginColor}"></div></div>
+      </div>
+
+      <!-- Detail tables -->
+      <details style="margin-bottom:8px">
+        <summary style="cursor:pointer;font-size:12px;color:var(--muted);user-select:none;padding:6px 0">▸ View full cost breakdown</summary>
+        <div style="margin-top:10px">
+          ${matRows?`<div style="font-size:10px;color:var(--accent);text-transform:uppercase;font-weight:700;margin-bottom:4px">Raw Materials</div>
+          <table class="prod-materials-table"><thead><tr><th>Material</th><th>Qty</th><th>Rate</th><th>Total</th></tr></thead><tbody>${matRows}</tbody></table>`:''}
+          ${laborRows?`<div style="font-size:10px;color:var(--blue);text-transform:uppercase;font-weight:700;margin-bottom:4px;margin-top:10px">Labour</div>
+          <table class="prod-materials-table"><thead><tr><th>Role</th><th>Time</th><th>Rate</th><th>Total</th></tr></thead><tbody>${laborRows}</tbody></table>`:''}
+          ${ohRows||r.electricity?`<div style="font-size:10px;color:var(--warn);text-transform:uppercase;font-weight:700;margin-bottom:4px;margin-top:10px">Overhead</div>
+          <table class="prod-materials-table"><thead><tr><th>Item</th><th>Units</th><th>Rate</th><th>Total</th></tr></thead>
+          <tbody>${ohRows}${r.electricity?`<tr><td>⚡ Electricity</td><td>1</td><td>₹${r.electricity}</td><td style="color:var(--warn)">₹${r.electricity}</td></tr>`:''}</tbody></table>`:''}
+        </div>
+      </details>
+    </div>`;
+  }).join('');
+}
+
+/* ============================================================
+   ITERATION / IMPROVEMENT CYCLES
+   ============================================================ */
+let iterations = JSON.parse(localStorage.getItem('sf_iterations')||'[]');
+
+function populateIterSelects(){
+  ['iter-product-sel','iter-filter-prod'].forEach(id=>{
+    const sel=document.getElementById(id); if(!sel) return;
+    const cur=sel.value;
+    sel.innerHTML=(id==='iter-filter-prod'?'<option value="">All Products</option>':'<option value="">— Select product —</option>')+
+      items.map(i=>`<option value="${i.id}">${i.name}</option>`).join('');
+    sel.value=cur;
+  });
+}
+
+function saveIteration(){
+  const pid   = document.getElementById('iter-product-sel').value;
+  if(!pid){ toast('⚠️','Select a product first'); return; }
+  const title = document.getElementById('iter-title').value.trim();
+  if(!title){ toast('⚠️','Enter a title'); return; }
+  const iter = {
+    id        : Date.now(),
+    pid,
+    title,
+    category  : document.getElementById('iter-cat').value,
+    status    : document.getElementById('iter-status').value,
+    costBefore: parseFloat(document.getElementById('iter-cost-before').value)||0,
+    costAfter : parseFloat(document.getElementById('iter-cost-after').value)||0,
+    what      : document.getElementById('iter-what').value.trim(),
+    result    : document.getElementById('iter-result').value.trim(),
+    nextStep  : document.getElementById('iter-next').value.trim(),
+    date      : new Date().toISOString()
+  };
+  iterations.unshift(iter);
+  localStorage.setItem('sf_iterations', JSON.stringify(iterations));
+  renderIterations();
+  renderIterSummary();
+  clearIterForm();
+  syncToSheet();
+  toast('✅','Iteration logged!');
+}
+
+function clearIterForm(){
+  ['iter-product-sel','iter-title','iter-what','iter-result','iter-next','iter-cost-before','iter-cost-after'].forEach(id=>{
+    const el=document.getElementById(id); if(el) el.value='';
+  });
+  document.getElementById('iter-status').value='testing';
+  document.getElementById('iter-cat').value='material';
+}
+
+function deleteIteration(id){
+  if(!confirm('Delete this iteration?')) return;
+  iterations=iterations.filter(i=>i.id!==id);
+  localStorage.setItem('sf_iterations', JSON.stringify(iterations));
+  renderIterations(); renderIterSummary(); syncToSheet();
+  toast('🗑️','Deleted');
+}
+
+function updateIterStatus(id, newStatus){
+  const it = iterations.find(i=>i.id===id);
+  if(!it) return;
+  it.status = newStatus;
+  localStorage.setItem('sf_iterations', JSON.stringify(iterations));
+  renderIterations(); renderIterSummary(); syncToSheet();
+  toast('✅','Status updated');
+}
+
+const iterCatLabel={material:'🧪 Raw Material',labor:'👷 Labour',overhead:'⚡ Overhead',process:'⏱ Process',supplier:'🏢 Supplier',design:'🎨 Design/Formula',other:'📝 Other'};
+const iterStatusLabel={saving:'💡 Planning',testing:'🧪 Testing',success:'✅ Implemented',failed:'❌ Failed'};
+
+function renderIterations(){
+  const container = document.getElementById('iter-timeline-container');
+  const filterProd   = document.getElementById('iter-filter-prod')?.value||'';
+  const filterStatus = document.getElementById('iter-filter-status')?.value||'';
+  let list = iterations.filter(i=>{
+    if(filterProd && i.pid!=filterProd) return false;
+    if(filterStatus && i.status!==filterStatus) return false;
+    return true;
+  });
+  if(!list.length){
+    container.innerHTML=`<div style="color:var(--muted);font-size:13px;text-align:center;padding:60px 20px"><div style="font-size:32px;margin-bottom:10px">🔁</div>No iterations found.</div>`;
+    return;
+  }
+  container.innerHTML='<div class="iter-timeline">'+list.map(it=>{
+    const item=items.find(i=>i.id==it.pid);
+    const saving = it.costBefore>0&&it.costAfter>0 ? it.costBefore-it.costAfter : null;
+    const savingPct = saving!==null&&it.costBefore>0 ? (saving/it.costBefore*100).toFixed(1) : null;
+    const dotColor = {saving:'var(--blue)',testing:'var(--warn)',success:'var(--accent)',failed:'var(--danger)'}[it.status]||'var(--muted)';
+    const dateStr  = new Date(it.date).toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'numeric'});
+    return`<div class="iter-tl-item">
+      <div class="iter-tl-dot" style="border-color:${dotColor};background:color-mix(in srgb,${dotColor} 20%,var(--surface))"></div>
+      <div class="iter-card ${it.status}">
+        <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px">
+          <div>
+            <div class="iter-card-title">${it.title}</div>
+            <div class="iter-card-meta">
+              <span>${item?item.name:'Unknown'}</span>
+              <span class="iter-tag iter-tag-${it.status}">${iterStatusLabel[it.status]||it.status}</span>
+              <span style="font-size:10px;color:var(--muted);font-family:'DM Mono',monospace">${iterCatLabel[it.category]||it.category}</span>
+              <span style="font-size:10px;color:var(--muted)">${dateStr}</span>
+            </div>
+          </div>
+          <div style="display:flex;gap:5px;flex-shrink:0">
+            <select onchange="updateIterStatus(${it.id},this.value)" style="padding:3px 7px;background:var(--surface2);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:11px;outline:none;cursor:pointer">
+              <option value="saving" ${it.status==='saving'?'selected':''}>💡 Planning</option>
+              <option value="testing" ${it.status==='testing'?'selected':''}>🧪 Testing</option>
+              <option value="success" ${it.status==='success'?'selected':''}>✅ Done</option>
+              <option value="failed" ${it.status==='failed'?'selected':''}>❌ Failed</option>
+            </select>
+            <button class="prod-del" onclick="deleteIteration(${it.id})">🗑</button>
+          </div>
+        </div>
+
+        ${saving!==null?`<div class="iter-impact">
+          <div style="flex:1">
+            <div style="font-size:10px;color:var(--muted);margin-bottom:2px">COST SAVING PER BATCH</div>
+            <div class="iter-saving-amt" style="color:${saving>0?'var(--accent)':'var(--danger)'}">${saving>0?'−':'+'} ₹${Math.abs(saving).toFixed(2)} <span style="font-size:12px;font-weight:400;color:var(--muted)">(${savingPct}%)</span></div>
+          </div>
+          <div class="iter-compare">
+            <div class="iter-compare-box"><div class="iter-compare-label">Before</div><div class="iter-compare-val" style="color:var(--danger)">₹${it.costBefore.toFixed(2)}</div></div>
+            <div class="iter-compare-box"><div class="iter-compare-label">After</div><div class="iter-compare-val" style="color:${saving>0?'var(--accent)':'var(--danger)'}">₹${it.costAfter.toFixed(2)}</div></div>
+          </div>
+        </div>`:''}
+
+        ${it.what?`<div style="margin-bottom:6px"><div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.3px;margin-bottom:3px">What Changed</div><div style="font-size:12px">${it.what}</div></div>`:''}
+        ${it.result?`<div style="margin-bottom:6px"><div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.3px;margin-bottom:3px">Result</div><div style="font-size:12px;color:var(--muted)">${it.result}</div></div>`:''}
+        ${it.nextStep?`<div style="background:var(--surface2);border-radius:7px;padding:7px 11px;font-size:12px">🎯 Next: ${it.nextStep}</div>`:''}
+      </div>
+    </div>`;
+  }).join('')+'</div>';
+}
+
+function renderIterSummary(){
+  const panel = document.getElementById('iter-summary-panel');
+  if(!panel||!iterations.length){ if(panel) panel.innerHTML='<div style="color:var(--muted);font-size:12px">Log iterations to see savings</div>'; return; }
+  const done    = iterations.filter(i=>i.status==='success');
+  const testing = iterations.filter(i=>i.status==='testing');
+  const totalSaving = done.filter(i=>i.costBefore>0&&i.costAfter>0).reduce((s,i)=>s+(i.costBefore-i.costAfter),0);
+  const byProd = {};
+  done.forEach(i=>{ if(!byProd[i.pid]) byProd[i.pid]=0; if(i.costBefore>0&&i.costAfter>0) byProd[i.pid]+=(i.costBefore-i.costAfter); });
+  panel.innerHTML=`
+    <div class="card-row"><span class="card-label">Total Iterations</span><span class="card-val">${iterations.length}</span></div>
+    <div class="card-row"><span class="card-label">✅ Implemented</span><span class="card-val" style="color:var(--accent)">${done.length}</span></div>
+    <div class="card-row"><span class="card-label">🧪 Testing</span><span class="card-val" style="color:var(--warn)">${testing.length}</span></div>
+    <div class="card-row"><span class="card-label">💰 Total Saved/batch</span><span class="card-val" style="color:var(--accent)">₹${totalSaving.toFixed(2)}</span></div>
+    ${Object.entries(byProd).slice(0,3).map(([pid,sav])=>{
+      const it=items.find(i=>i.id==pid);
+      return`<div class="card-row"><span class="card-label" style="font-size:11px">${it?it.name:'Unknown'}</span><span class="card-val" style="color:var(--accent);font-size:12px">−₹${sav.toFixed(2)}</span></div>`;
+    }).join('')}`;
+}
+
+/* ============================================================
+   START APP
+   ============================================================ */
+async function init() {
+  const lastSync = localStorage.getItem('sf_last_sync');
+  if (lastSync) document.getElementById('last-sync-text').textContent = `Last sync: ${new Date(lastSync).toLocaleTimeString()}`;
+
+  document.getElementById('g-inv-date').value = new Date().toISOString().split('T')[0];
+  const fd = new Date(); fd.setDate(fd.getDate()+30);
+  document.getElementById('g-due-date').value = fd.toISOString().split('T')[0];
+
+  // Init variants form
+  varAxes = [];
+  renderAxes();
+
+  // Init production form with default rows
+  addRawRow('',1,0); addRawRow('',1,0); addRawRow('',1,0);
+  addLaborRow('',1,0);
+  addOverheadRow('',1,0);
+  
+  render();
+
+  if (SCRIPT_URL) {
+    document.getElementById('sheet-url-input').value = SCRIPT_URL;
+    if (await pingSheet()) await loadFromSheet();
+  } else {
+    setSyncState('', 'Not connected — paste your Google Apps Script URL to connect');
+    document.getElementById('setup-banner').classList.remove('hidden');
+  }
+}
+init();
 </script>
 </body>
 </html>
