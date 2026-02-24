@@ -368,6 +368,33 @@ kbd{background:var(--surface2);border:1px solid var(--border);border-radius:4px;
 .var-summary{display:flex;gap:14px;flex-wrap:wrap;margin-top:10px;padding-top:10px;border-top:1px solid var(--border)}
 .var-summary-item{font-size:11px;color:var(--muted)}
 .var-summary-item span{color:var(--text);font-weight:600;font-family:'DM Mono',monospace}
+
+/* ===== VARIANT AXIS BUILDER ===== */
+.var-axis{background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:14px;margin-bottom:10px}
+.var-axis-header{display:flex;align-items:center;gap:8px;margin-bottom:10px}
+.var-axis-label{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;font-weight:700;flex:1}
+.var-axis-name-input{background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--text);padding:5px 10px;font-family:'DM Sans',sans-serif;font-size:13px;flex:1;outline:none;transition:border-color .2s}
+.var-axis-name-input:focus{border-color:var(--accent)}
+.var-axis-values{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px}
+.var-axis-tag{display:inline-flex;align-items:center;gap:5px;background:var(--bg);border:1px solid var(--border);border-radius:99px;padding:4px 10px;font-size:12px;cursor:default}
+.var-axis-tag-del{background:none;border:none;color:var(--danger);cursor:pointer;font-size:13px;line-height:1;padding:0 2px}
+.var-axis-add-wrap{display:flex;gap:6px}
+.var-axis-value-input{background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--text);padding:5px 10px;font-family:'DM Sans',sans-serif;font-size:12px;flex:1;outline:none}
+.var-axis-value-input:focus{border-color:var(--accent)}
+.var-axis-color-input{width:36px;height:36px;border:1px solid var(--border);border-radius:6px;cursor:pointer;padding:2px;background:var(--bg)}
+
+/* ===== MATRIX TABLE ===== */
+.matrix-th{background:var(--surface2);padding:8px 12px;font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;font-weight:700;white-space:nowrap;border:1px solid var(--border)}
+.matrix-th.combo-col{color:var(--text);font-weight:600;text-transform:none;font-size:12px}
+.matrix-td{padding:6px 8px;border:1px solid var(--border);vertical-align:middle}
+.matrix-input{width:60px;background:var(--bg);border:1px solid var(--border);border-radius:5px;color:var(--text);font-family:'DM Mono',monospace;font-size:12px;text-align:center;padding:4px 6px;outline:none}
+.matrix-input:focus{border-color:var(--accent)}
+.matrix-input.warn-input{border-color:var(--warn)}
+.matrix-barcode-input{width:110px;background:var(--bg);border:1px solid var(--border);border-radius:5px;color:var(--text);font-family:'DM Mono',monospace;font-size:11px;padding:4px 6px;outline:none}
+.matrix-barcode-input:focus{border-color:var(--accent)}
+.matrix-combo-label{display:flex;align-items:center;gap:6px;white-space:nowrap;font-size:12px}
+.matrix-color-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0;border:1px solid rgba(255,255,255,.15)}
+.matrix-sku-badge{font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);background:var(--surface);border-radius:4px;padding:1px 5px;margin-left:4px}
 </style>
 </head>
 <body>
@@ -615,52 +642,68 @@ kbd{background:var(--surface2);border:1px solid var(--border);border-radius:4px;
   <!-- VARIANTS TAB -->
   <div id="tab-variants" class="hidden">
     <div class="var-layout">
-      <div class="var-form">
-        <div class="var-title">🎨 Add Product Variants</div>
+
+      <!-- LEFT FORM: Define attributes + generate matrix -->
+      <div class="var-form" style="position:sticky;top:72px;max-height:calc(100vh - 90px);overflow-y:auto">
+        <div class="var-title">🎨 Multi-Attribute Variants</div>
+        <div style="color:var(--muted);font-size:12px;margin-bottom:16px">Define multiple attributes (Color, Size, etc.) — all combinations are auto-generated as a stock matrix.</div>
+
         <div style="margin-bottom:14px">
           <label style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;display:block;margin-bottom:5px">Parent Product</label>
           <select class="var-product-select" id="var-product-sel"><option value="">— Select a product —</option></select>
         </div>
-        <div style="margin-bottom:14px">
-          <label style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;display:block;margin-bottom:8px">Variant Type</label>
-          <div style="display:flex;gap:7px;flex-wrap:wrap">
-            <button class="btn btn-ghost btn-sm var-type-btn" data-type="color" onclick="setVarType('color',this)" style="border-color:var(--accent);color:var(--accent)">🎨 Color</button>
-            <button class="btn btn-ghost btn-sm var-type-btn" data-type="size" onclick="setVarType('size',this)">📐 Size</button>
-            <button class="btn btn-ghost btn-sm var-type-btn" data-type="material" onclick="setVarType('material',this)">🧵 Material</button>
-            <button class="btn btn-ghost btn-sm var-type-btn" data-type="custom" onclick="setVarType('custom',this)">✏️ Custom</button>
-          </div>
-        </div>
-        <div id="var-custom-label-wrap" style="display:none;margin-bottom:14px">
-          <label style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;display:block;margin-bottom:5px">Variant Label</label>
-          <input class="var-attr-input" id="var-custom-label" placeholder="e.g. Flavour, Pack Size..." style="width:100%">
-        </div>
-        <div style="display:grid;grid-template-columns:1.2fr 0.8fr 0.9fr 60px 60px 36px;gap:7px;margin-bottom:6px">
-          <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.3px">Value</div>
-          <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.3px">SKU Suffix</div>
-          <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.3px">Barcode</div>
-          <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.3px">Stock</div>
-          <div style="font-size:10px;color:var(--warn);text-transform:uppercase;letter-spacing:.3px" title="Alert when stock drops below this">Min ⚠</div>
-          <div></div>
-        </div>
-        <div id="var-attrs-container"></div>
-        <button class="btn btn-ghost btn-sm" onclick="addVarAttrRow()" style="margin-top:7px;width:100%">+ Add Variant Row</button>
-        <div style="margin-top:16px;display:flex;gap:8px">
-          <button class="btn btn-primary" style="flex:1" onclick="saveVariants()">💾 Save Variants</button>
-          <button class="btn btn-ghost" onclick="clearVarForm()">Clear</button>
-        </div>
-        <div style="margin-top:18px;background:var(--surface2);border-radius:10px;padding:14px">
-          <div style="font-size:11px;color:var(--accent);font-weight:600;text-transform:uppercase;margin-bottom:9px">⚡ Quick Templates</div>
+
+        <!-- Attribute axes builder -->
+        <div id="var-axes-container"></div>
+        <button class="btn btn-ghost btn-sm" onclick="addVarAxis()" style="width:100%;margin-bottom:14px">+ Add Another Attribute (e.g. Size)</button>
+
+        <!-- Quick presets -->
+        <div style="background:var(--surface2);border-radius:10px;padding:12px;margin-bottom:14px">
+          <div style="font-size:11px;color:var(--accent);font-weight:600;text-transform:uppercase;margin-bottom:8px">⚡ Quick Presets</div>
           <div style="display:flex;gap:6px;flex-wrap:wrap">
-            <button class="btn btn-ghost btn-sm" onclick="applyTemplate('tshirt')">👕 T-Shirt Sizes</button>
-            <button class="btn btn-ghost btn-sm" onclick="applyTemplate('colors')">🌈 Basic Colors</button>
-            <button class="btn btn-ghost btn-sm" onclick="applyTemplate('shoes')">👟 Shoe Sizes</button>
-            <button class="btn btn-ghost btn-sm" onclick="applyTemplate('pack')">📦 Pack Sizes</button>
+            <button class="btn btn-ghost btn-sm" onclick="applyPreset('bandana')">🐕 Dog Bandana</button>
+            <button class="btn btn-ghost btn-sm" onclick="applyPreset('tshirt')">👕 T-Shirt</button>
+            <button class="btn btn-ghost btn-sm" onclick="applyPreset('shoes')">👟 Shoes</button>
+            <button class="btn btn-ghost btn-sm" onclick="applyPreset('colorsonly')">🌈 Colors Only</button>
+            <button class="btn btn-ghost btn-sm" onclick="applyPreset('sizesonly')">📐 Sizes Only</button>
           </div>
         </div>
+
+        <!-- Default stock & reorder for all -->
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-bottom:14px">
+          <div>
+            <div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.3px;margin-bottom:4px">Default Stock</div>
+            <input class="var-attr-input" id="var-default-stock" type="number" min="0" value="0" style="width:100%">
+          </div>
+          <div>
+            <div style="font-size:11px;color:var(--warn);text-transform:uppercase;letter-spacing:.3px;margin-bottom:4px">Default Min ⚠</div>
+            <input class="var-attr-input" id="var-default-reorder" type="number" min="0" value="5" style="width:100%;border-color:var(--warn)">
+          </div>
+        </div>
+
+        <button class="btn btn-primary" style="width:100%;margin-bottom:8px" onclick="generateMatrix()">⚡ Generate Combinations</button>
+        <button class="btn btn-ghost" style="width:100%;font-size:12px" onclick="clearVarForm()">Clear</button>
       </div>
+
+      <!-- RIGHT: Cards + Matrix editor -->
       <div class="var-list">
-        <div class="var-title">📦 Products with Variants</div>
-        <div id="var-cards-container"><div style="color:var(--muted);font-size:13px;text-align:center;padding:40px 20px">No variants yet.<br>Select a product and add variants.</div></div>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+          <div class="var-title" style="margin-bottom:0">📦 Products with Variants</div>
+        </div>
+        <!-- Matrix editor (shown after generate) -->
+        <div id="var-matrix-editor" style="display:none;background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:20px;margin-bottom:16px">
+          <div style="font-family:'Syne',sans-serif;font-size:14px;font-weight:700;margin-bottom:4px" id="matrix-editor-title">Combination Matrix</div>
+          <div style="font-size:12px;color:var(--muted);margin-bottom:14px" id="matrix-editor-sub"></div>
+          <div style="overflow-x:auto">
+            <table id="matrix-table" style="border-collapse:collapse;font-size:12px;min-width:100%"></table>
+          </div>
+          <div style="margin-top:14px;display:flex;gap:8px">
+            <button class="btn btn-primary" style="flex:1" onclick="saveVariants()">💾 Save All Combinations</button>
+            <button class="btn btn-ghost" onclick="document.getElementById('var-matrix-editor').style.display='none'">✕ Cancel</button>
+          </div>
+        </div>
+        <!-- Existing cards -->
+        <div id="var-cards-container"><div style="color:var(--muted);font-size:13px;text-align:center;padding:40px 20px">No variants yet.<br>Select a product and generate combinations.</div></div>
       </div>
     </div>
   </div>
@@ -1218,19 +1261,14 @@ function processBarcodeScan(mode) {
   if(!barcode){ toast('⚠️','Please enter or scan a barcode'); inputEl.focus(); return; }
   if(qty < 1){ toast('⚠️','Quantity must be at least 1'); return; }
 
-  // ── 1. Try matching a VARIANT first (by skuSuffix barcode or full SKU) ──
-  let matchedVariant = null, matchedVarParent = null, matchedVarIdx = -1;
-  for (const [pid, vData] of Object.entries(variants)) {
-    vData.attrs.forEach((attr, idx) => {
-      const varSku = (items.find(i=>i.id==pid)?.sku||'') + (attr.skuSuffix||'');
-      if (attr.barcode === barcode || varSku === barcode) {
-        matchedVariant   = attr;
-        matchedVarParent = items.find(i=>i.id==pid);
-        matchedVarIdx    = idx;
-        matchedVarPid    = pid;
-      }
-    });
-    if(matchedVariant) break;
+  // ── 1. Try matching a VARIANT first (by barcode or full SKU) ──
+  let matchedVariant = null, matchedVarParent = null, matchedVarIdx = -1, matchedVarPid;
+  const varMatch = findVariantByBarcode(barcode);
+  if(varMatch){
+    matchedVarPid    = varMatch.pid;
+    matchedVarIdx    = varMatch.comboIdx;
+    matchedVariant   = varMatch.combo;
+    matchedVarParent = items.find(i=>i.id==varMatch.pid);
   }
 
   // ── 2. Fallback: try matching a parent item ──
@@ -1255,7 +1293,8 @@ function processBarcodeScan(mode) {
     item.stock += qty;
     if (matchedVariant) {
       matchedVariant.stock += qty;
-      variantNote = ` (${matchedVariant.value} variant +${qty})`;
+      const comboName = matchedVariant.labels ? matchedVariant.labels.join('/') : (matchedVariant.value||'');
+      variantNote = ` (${comboName} +${qty})`;
     }
   } else {
     if (qty > item.stock) {
@@ -1268,7 +1307,8 @@ function processBarcodeScan(mode) {
     if (matchedVariant) {
       const varStock = matchedVariant.stock;
       matchedVariant.stock = Math.max(0, varStock - qty);
-      variantNote = ` (${matchedVariant.value} variant -${qty})`;
+      const comboName = matchedVariant.labels ? matchedVariant.labels.join('/') : (matchedVariant.value||'');
+      variantNote = ` (${comboName} -${qty})`;
     }
   }
 
@@ -1276,7 +1316,9 @@ function processBarcodeScan(mode) {
 
   // ── 4. Update variant in variants object ──
   if (matchedVariant && matchedVarPid !== undefined) {
-    variants[matchedVarPid].attrs[matchedVarIdx] = matchedVariant;
+    const vData = variants[matchedVarPid];
+    const comboArr = vData.combos || vData.attrs;
+    comboArr[matchedVarIdx] = matchedVariant;
     localStorage.setItem('sf_variants', JSON.stringify(variants));
     renderVarCards();
   }
@@ -1312,7 +1354,7 @@ function processBarcodeScan(mode) {
     qty,
     before,
     after,
-    variantValue : matchedVariant ? matchedVariant.value : '',
+    variantValue : matchedVariant ? (matchedVariant.labels ? matchedVariant.labels.join(' / ') : (matchedVariant.value||'')) : '',
     parentSku    : item.sku
   };
 
@@ -1848,208 +1890,386 @@ function runMonitorAlgo(){
   toast('🔄','Monitor algorithm ran — results updated!');
 }
 
+
 /* ============================================================
-   PRODUCT VARIANTS
+   PRODUCT VARIANTS  — Multi-Attribute Matrix System
+   variants[pid] = {
+     axes: [ { name:'Color', values:[{label,color}] }, { name:'Size', values:[{label}] } ],
+     combos: [ { key:'Red|S', labels:['Red','S'], sku, barcode, stock, reorderPoint, color } ]
+   }
    ============================================================ */
 let variants = JSON.parse(localStorage.getItem('sf_variants')||'{}');
-// variants = { itemId: { type, label, attrs:[{value,skuSuffix,stock,color}] } }
-let currentVarType = 'color';
 
-function setVarType(type, btn){
-  currentVarType = type;
-  document.querySelectorAll('.var-type-btn').forEach(b=>{ b.style.borderColor=''; b.style.color=''; });
-  btn.style.borderColor='var(--accent)'; btn.style.color='var(--accent)';
-  document.getElementById('var-custom-label-wrap').style.display = type==='custom'?'block':'none';
+// ── Axis builder state ─────────────────────────────────────
+let varAxes = []; // [ { name, values:[{label, color}], isColor } ]
+
+function addVarAxis(name='', values=[], isColor=false){
+  const axisId = 'axis-' + Date.now() + Math.random().toString(36).slice(2,6);
+  varAxes.push({ id: axisId, name, values, isColor });
+  renderAxes();
 }
 
+function removeVarAxis(axisId){
+  varAxes = varAxes.filter(a=>a.id!==axisId);
+  renderAxes();
+}
+
+function addAxisValue(axisId, label, color='#00e5a0'){
+  const axis = varAxes.find(a=>a.id===axisId);
+  if(!axis||!label.trim()) return;
+  if(axis.values.find(v=>v.label.toLowerCase()===label.trim().toLowerCase())){
+    toast('⚠️','Value already exists'); return;
+  }
+  axis.values.push({ label: label.trim(), color });
+  renderAxes();
+}
+
+function removeAxisValue(axisId, idx){
+  const axis = varAxes.find(a=>a.id===axisId);
+  if(axis) axis.values.splice(idx,1);
+  renderAxes();
+}
+
+function renderAxes(){
+  const container = document.getElementById('var-axes-container');
+  if(!container) return;
+  container.innerHTML = varAxes.map((axis,aIdx)=>{
+    const tags = axis.values.map((v,vIdx)=>`
+      <span class="var-axis-tag" style="${axis.isColor?'border-color:'+v.color+';background:'+v.color+'22':''}" >
+        ${axis.isColor?`<span style="width:9px;height:9px;border-radius:50%;background:${v.color};border:1px solid rgba(255,255,255,.25);flex-shrink:0"></span>`:''}
+        ${v.label}
+        <button class="var-axis-tag-del" onclick="removeAxisValue('${axis.id}',${vIdx})">×</button>
+      </span>`).join('');
+
+    return`<div class="var-axis" id="${axis.id}">
+      <div class="var-axis-header">
+        <div style="display:flex;flex-direction:column;gap:4px;flex:1">
+          <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.4px">Attribute Name</div>
+          <input class="var-axis-name-input" value="${axis.name}" placeholder="e.g. Color, Size, Material"
+            oninput="varAxes.find(a=>a.id==='${axis.id}').name=this.value">
+        </div>
+        <label style="display:flex;align-items:center;gap:5px;font-size:11px;color:var(--muted);cursor:pointer;margin-left:10px;margin-top:16px">
+          <input type="checkbox" ${axis.isColor?'checked':''} onchange="varAxes.find(a=>a.id==='${axis.id}').isColor=this.checked;renderAxes()"> Has colours
+        </label>
+        <button class="prod-del" onclick="removeVarAxis('${axis.id}')" style="margin-top:14px;margin-left:8px">✕</button>
+      </div>
+      <div class="var-axis-values" id="tags-${axis.id}">${tags||'<span style="color:var(--muted);font-size:12px">No values yet</span>'}</div>
+      <div class="var-axis-add-wrap">
+        <input class="var-axis-value-input" id="inp-${axis.id}" placeholder="Add value, press Enter"
+          onkeydown="if(event.key==='Enter'){event.preventDefault();addAxisValueFromInput('${axis.id}')}">
+        ${axis.isColor?`<input type="color" class="var-axis-color-input" id="col-${axis.id}" value="#00e5a0">`:''}
+        <button class="btn btn-ghost btn-sm" onclick="addAxisValueFromInput('${axis.id}')">Add</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function addAxisValueFromInput(axisId){
+  const inp = document.getElementById('inp-'+axisId);
+  const colInp = document.getElementById('col-'+axisId);
+  if(!inp||!inp.value.trim()) return;
+  addAxisValue(axisId, inp.value.trim(), colInp?colInp.value:'#00e5a0');
+  inp.value = '';
+}
+
+// ── Presets ────────────────────────────────────────────────
+function applyPreset(preset){
+  varAxes = [];
+  const presets = {
+    bandana: [
+      { name:'Color', isColor:true, values:[
+        {label:'Red',color:'#ff4757'},{label:'Blue',color:'#5eb8ff'},
+        {label:'Pink',color:'#ff6b9d'},{label:'Yellow',color:'#ffd166'},
+        {label:'Green',color:'#34a853'},{label:'Purple',color:'#c084fc'}
+      ]},
+      { name:'Size', isColor:false, values:[
+        {label:'XS'},{label:'S'},{label:'M'},{label:'L'},{label:'XL'}
+      ]}
+    ],
+    tshirt: [
+      { name:'Color', isColor:true, values:[
+        {label:'White',color:'#e8edf5'},{label:'Black',color:'#1a1a2e'},
+        {label:'Navy',color:'#2d3a6b'},{label:'Red',color:'#ff4757'}
+      ]},
+      { name:'Size', isColor:false, values:[
+        {label:'XS'},{label:'S'},{label:'M'},{label:'L'},{label:'XL'},{label:'XXL'}
+      ]}
+    ],
+    shoes: [
+      { name:'Color', isColor:true, values:[
+        {label:'Black',color:'#1a1a2e'},{label:'White',color:'#e8edf5'},{label:'Brown',color:'#8B4513'}
+      ]},
+      { name:'Size', isColor:false, values:[
+        {label:'6'},{label:'7'},{label:'8'},{label:'9'},{label:'10'},{label:'11'}
+      ]}
+    ],
+    colorsonly: [
+      { name:'Color', isColor:true, values:[
+        {label:'Red',color:'#ff4757'},{label:'Blue',color:'#5eb8ff'},
+        {label:'Green',color:'#34a853'},{label:'Black',color:'#1a1a2e'},
+        {label:'White',color:'#e8edf5'},{label:'Yellow',color:'#ffd166'}
+      ]}
+    ],
+    sizesonly: [
+      { name:'Size', isColor:false, values:[
+        {label:'XS'},{label:'S'},{label:'M'},{label:'L'},{label:'XL'},{label:'XXL'}
+      ]}
+    ]
+  };
+  const data = presets[preset]||[];
+  data.forEach(a=>{
+    varAxes.push({ id:'axis-'+Date.now()+Math.random().toString(36).slice(2,6), name:a.name, values:a.values, isColor:a.isColor });
+  });
+  renderAxes();
+  toast('✅', preset.charAt(0).toUpperCase()+preset.slice(1)+' preset loaded — click Generate!');
+}
+
+// ── Cartesian product of all axes ─────────────────────────
+function cartesian(axes){
+  if(!axes.length) return [[]];
+  const [first, ...rest] = axes;
+  const restCombos = cartesian(rest);
+  return first.values.flatMap(v => restCombos.map(combo => [v, ...combo]));
+}
+
+// ── Generate matrix ────────────────────────────────────────
+function generateMatrix(){
+  const pid = document.getElementById('var-product-sel').value;
+  if(!pid){ toast('⚠️','Select a product first'); return; }
+  if(!varAxes.length){ toast('⚠️','Add at least one attribute (e.g. Color)'); return; }
+  if(varAxes.some(a=>!a.values.length)){ toast('⚠️','Each attribute needs at least one value'); return; }
+
+  const item    = items.find(i=>i.id==pid);
+  const combos  = cartesian(varAxes); // array of [val, val, ...] per axis
+  const defaultStock   = parseInt(document.getElementById('var-default-stock').value)||0;
+  const defaultReorder = parseInt(document.getElementById('var-default-reorder').value)||5;
+  const parentSku = item ? item.sku : '';
+
+  // If editing existing, preserve existing stock/barcode
+  const existing = variants[pid] ? variants[pid].combos : [];
+  const existingMap = {};
+  existing.forEach(c=>{ existingMap[c.key]=c; });
+
+  const rows = combos.map(combo=>{
+    const key    = combo.map(v=>v.label).join('|');
+    const labels = combo.map(v=>v.label);
+    const skuSuffix = '-'+labels.map(l=>l.toUpperCase().replace(/\s+/g,'')).join('-');
+    const colorVal = combo.find((_,i)=>varAxes[i].isColor);
+    const ex = existingMap[key];
+    return {
+      key,
+      labels,
+      sku: parentSku+skuSuffix,
+      barcode: ex ? ex.barcode||'' : '',
+      stock: ex ? ex.stock : defaultStock,
+      reorderPoint: ex ? ex.reorderPoint : defaultReorder,
+      color: colorVal ? colorVal.color : '#00e5a0'
+    };
+  });
+
+  // Show matrix editor
+  renderMatrixEditor(pid, rows);
+  document.getElementById('var-matrix-editor').style.display='block';
+  document.getElementById('var-matrix-editor').scrollIntoView({behavior:'smooth'});
+}
+
+let pendingMatrix = { pid: null, rows: [] };
+
+function renderMatrixEditor(pid, rows){
+  pendingMatrix = { pid, rows };
+  const item = items.find(i=>i.id==pid);
+  document.getElementById('matrix-editor-title').textContent = (item?item.name:'Product') + ' — Combination Matrix';
+  document.getElementById('matrix-editor-sub').textContent = rows.length + ' combinations × ' + varAxes.length + ' attributes';
+
+  const axisNames = varAxes.map(a=>a.name);
+
+  const thead = `<thead><tr>
+    ${axisNames.map(n=>`<th class="matrix-th">${n}</th>`).join('')}
+    <th class="matrix-th">SKU</th>
+    <th class="matrix-th">Barcode</th>
+    <th class="matrix-th">Stock</th>
+    <th class="matrix-th" style="color:var(--warn)">Min ⚠</th>
+  </tr></thead>`;
+
+  const tbody = '<tbody>'+rows.map((row,rIdx)=>{
+    const colorDot = row.color && row.color!=='#00e5a0'
+      ? `<span class="matrix-color-dot" style="background:${row.color}"></span>` : '';
+    const labelCells = row.labels.map((lbl,i)=>{
+      const isColorAxis = varAxes[i]&&varAxes[i].isColor;
+      const axisVal = varAxes[i]?(varAxes[i].values.find(v=>v.label===lbl)||{}):{}; 
+      return`<td class="matrix-td">
+        <div class="matrix-combo-label">
+          ${isColorAxis?`<span class="matrix-color-dot" style="background:${axisVal.color||'#00e5a0'}"></span>`:''}
+          <span>${lbl}</span>
+        </div>
+      </td>`;
+    }).join('');
+    return`<tr>
+      ${labelCells}
+      <td class="matrix-td"><span class="matrix-sku-badge">${row.sku}</span></td>
+      <td class="matrix-td"><input class="matrix-barcode-input" data-row="${rIdx}" data-field="barcode" value="${row.barcode}" placeholder="Barcode EAN"></td>
+      <td class="matrix-td"><input class="matrix-input" data-row="${rIdx}" data-field="stock" type="number" min="0" value="${row.stock}"></td>
+      <td class="matrix-td"><input class="matrix-input warn-input" data-row="${rIdx}" data-field="reorderPoint" type="number" min="0" value="${row.reorderPoint}"></td>
+    </tr>`;
+  }).join('')+'</tbody>';
+
+  document.getElementById('matrix-table').innerHTML = thead+tbody;
+
+  // Live update pendingMatrix.rows on input
+  document.querySelectorAll('#matrix-table input[data-row]').forEach(inp=>{
+    inp.addEventListener('input', ()=>{
+      const r = parseInt(inp.dataset.row);
+      const f = inp.dataset.field;
+      pendingMatrix.rows[r][f] = f==='stock'||f==='reorderPoint' ? parseInt(inp.value)||0 : inp.value;
+    });
+  });
+}
+
+// ── Save ───────────────────────────────────────────────────
+function saveVariants(){
+  const { pid, rows } = pendingMatrix;
+  if(!pid||!rows.length){ toast('⚠️','Generate combinations first'); return; }
+
+  variants[pid] = {
+    axes   : varAxes.map(a=>({ name:a.name, isColor:a.isColor, values:a.values })),
+    combos : rows
+  };
+
+  // Update parent stock = sum of all combos
+  const parentItem = items.find(i=>i.id==pid);
+  if(parentItem) parentItem.stock = rows.reduce((s,r)=>s+r.stock,0);
+
+  localStorage.setItem('sf_variants', JSON.stringify(variants));
+  document.getElementById('var-matrix-editor').style.display='none';
+  renderVarCards();
+  populateVarProductSelect();
+  render();
+  syncToSheet();
+  toast('✅', rows.length + ' combinations saved & synced!');
+}
+
+// ── Populate selects ───────────────────────────────────────
 function populateVarProductSelect(){
   const sel = document.getElementById('var-product-sel');
   const cur = sel.value;
   sel.innerHTML='<option value="">— Select a product —</option>'+
-    items.map(i=>`<option value="${i.id}" ${variants[i.id]?'':''}>${i.name} (${i.sku})${variants[i.id]?' ✓':''}</option>`).join('');
+    items.map(i=>`<option value="${i.id}">${i.name} (${i.sku})${variants[i.id]?' ✓':''}</option>`).join('');
   sel.value = cur;
-}
-
-function addVarAttrRow(val='', skuSuffix='', stock=0, color='#00e5a0', barcode='', reorderPt=5){
-  const container = document.getElementById('var-attrs-container');
-  const row = document.createElement('div');
-  row.className='var-attr-row';
-  const isColor = currentVarType==='color';
-  row.style.gridTemplateColumns = isColor ? '1.2fr 0.8fr 0.9fr 60px 60px 36px 36px' : '1.2fr 0.8fr 0.9fr 60px 60px 36px';
-  row.innerHTML=`
-    <input class="var-attr-input" placeholder="${currentVarType==='size'?'e.g. S, M, L':currentVarType==='color'?'e.g. Red, Blue':'Value'}" value="${val}">
-    <input class="var-attr-input" placeholder="-RED" value="${skuSuffix}">
-    <input class="var-attr-input" placeholder="Barcode / EAN" value="${barcode}">
-    <input class="var-attr-input" type="number" min="0" placeholder="Stock" value="${stock}" style="text-align:center" title="Current stock">
-    <input class="var-attr-input" type="number" min="0" placeholder="Min" value="${reorderPt}" style="text-align:center;border-color:var(--warn)" title="Low stock alert below this quantity">
-    ${isColor?`<input type="color" class="color-dot-input" value="${color}" title="Pick color">`:''}
-    <button class="var-del-btn" onclick="this.closest('.var-attr-row').remove()">✕</button>
-  `;
-  container.appendChild(row);
-}
-
-function saveVariants(){
-  const pid = document.getElementById('var-product-sel').value;
-  if(!pid){ toast('⚠️','Select a product first'); return; }
-  const rows = document.querySelectorAll('#var-attrs-container .var-attr-row');
-  if(!rows.length){ toast('⚠️','Add at least one variant row'); return; }
-  const label = currentVarType==='custom'
-    ? (document.getElementById('var-custom-label').value||'Variant')
-    : currentVarType;
-  const attrs=[];
-  rows.forEach(row=>{
-    const inputs = row.querySelectorAll('input');
-    const val       = inputs[0].value.trim();
-    const sfx       = inputs[1].value.trim();
-    const bc        = inputs[2].value.trim();
-    const stk       = parseInt(inputs[3].value)||0;
-    const rpt       = parseInt(inputs[4].value)||5;
-    const col       = inputs[5]&&inputs[5].type==='color' ? inputs[5].value : '#00e5a0';
-    if(val) attrs.push({value:val, skuSuffix:sfx, barcode:bc, stock:stk, reorderPoint:rpt, color:col});
-  });
-  if(!attrs.length){ toast('⚠️','Enter at least one variant value'); return; }
-
-  variants[pid] = {type:currentVarType, label, attrs};
-
-  // Also update parent item total stock = sum of all variant stocks
-  const parentItem = items.find(i=>i.id==pid);
-  if(parentItem){
-    parentItem.stock = attrs.reduce((s,a)=>s+a.stock, 0);
-  }
-
-  localStorage.setItem('sf_variants', JSON.stringify(variants));
-  renderVarCards();
-  populateVarProductSelect();
-  render();
-  syncToSheet(); // ← Save to Google Sheet
-  toast('✅','Variants saved & synced to sheet!');
+  sel.onchange = ()=>{ if(variants[sel.value]) editVariant(sel.value); };
 }
 
 function clearVarForm(){
   document.getElementById('var-product-sel').value='';
-  document.getElementById('var-attrs-container').innerHTML='';
-  addVarAttrRow(); addVarAttrRow(); addVarAttrRow();
-}
-
-function applyTemplate(tpl){
-  document.getElementById('var-attrs-container').innerHTML='';
-  const templates={
-    tshirt:[['XS','-XS','',0,'#5eb8ff'],['S','-S','',0,'#00e5a0'],['M','-M','',0,'#ffd166'],['L','-L','',0,'#ff6b35'],['XL','-XL','',0,'#ff4757'],['XXL','-XXL','',0,'#c084fc']],
-    colors:[['Red','-RED','',0,'#ff4757'],['Blue','-BLU','',0,'#5eb8ff'],['Green','-GRN','',0,'#34a853'],['Black','-BLK','',0,'#222'],['White','-WHT','',0,'#e8edf5'],['Yellow','-YLW','',0,'#ffd166']],
-    shoes:[['6','-6','',0,'#5eb8ff'],['7','-7','',0,'#5eb8ff'],['8','-8','',0,'#00e5a0'],['9','-9','',0,'#00e5a0'],['10','-10','',0,'#ffd166'],['11','-11','',0,'#ff6b35']],
-    pack:[['Single','-S1','',0,'#00e5a0'],['Pack of 3','-P3','',0,'#5eb8ff'],['Pack of 6','-P6','',0,'#ffd166'],['Pack of 12','-P12','',0,'#ff6b35'],['Bulk 50','-B50','',0,'#c084fc']]
-  };
-  const rows=templates[tpl]||[];
-  if(tpl==='tshirt'||tpl==='shoes') setVarType('size',document.querySelector('[data-type="size"]'));
-  else if(tpl==='colors') setVarType('color',document.querySelector('[data-type="color"]'));
-  else { setVarType('custom',document.querySelector('[data-type="custom"]')); }
-  rows.forEach(([v,s,b,st,c])=>addVarAttrRow(v,s,st,c,b));
+  varAxes=[];
+  renderAxes();
+  pendingMatrix={pid:null,rows:[]};
+  document.getElementById('var-matrix-editor').style.display='none';
 }
 
 function editVariant(pid){
-  document.getElementById('var-product-sel').value=pid;
-  const v=variants[pid];
+  const v = variants[pid];
   if(!v) return;
-  const btn = document.querySelector(`[data-type="${v.type}"]`) || document.querySelector('.var-type-btn');
-  setVarType(v.type, btn);
-  if(v.type==='custom'){
-    document.getElementById('var-custom-label-wrap').style.display='block';
-    document.getElementById('var-custom-label').value=v.label;
-  }
-  document.getElementById('var-attrs-container').innerHTML='';
-  v.attrs.forEach(a=>addVarAttrRow(a.value, a.skuSuffix||'', a.stock, a.color||'#00e5a0', a.barcode||'', a.reorderPoint||5));
+  document.getElementById('var-product-sel').value=pid;
+  // Restore axes
+  varAxes = (v.axes||[]).map(a=>({
+    id: 'axis-'+Date.now()+Math.random().toString(36).slice(2,5),
+    name: a.name, isColor: a.isColor, values: a.values
+  }));
+  renderAxes();
+  // Re-generate matrix with existing values
+  generateMatrix();
+  window.scrollTo(0,0);
 }
 
-// Inline +/- stock update directly on variant card
-function variantAdjustStock(pid, attrIdx, delta){
+// ── Inline stock adjust ────────────────────────────────────
+function variantAdjustStock(pid, comboIdx, delta){
   if(!variants[pid]) return;
-  const attr = variants[pid].attrs[attrIdx];
-  if(!attr) return;
-  const newStock = Math.max(0, attr.stock + delta);
-  const oldStock = attr.stock;
-  attr.stock = newStock;
+  const combo = variants[pid].combos[comboIdx];
+  if(!combo) return;
+  const newStock = Math.max(0, combo.stock + delta);
+  const oldStock = combo.stock;
+  combo.stock = newStock;
 
-  // Update parent item stock = sum of all variant stocks
   const parentItem = items.find(i=>i.id==pid);
-  if(parentItem){
-    const oldParentStock = parentItem.stock;
-    parentItem.stock = variants[pid].attrs.reduce((s,a)=>s+a.stock, 0);
-  }
+  if(parentItem) parentItem.stock = variants[pid].combos.reduce((s,c)=>s+c.stock,0);
 
   localStorage.setItem('sf_variants', JSON.stringify(variants));
 
-  const mode   = delta > 0 ? 'add' : 'deduct';
-  const absQty = Math.abs(delta);
+  const mode = delta>0?'add':'deduct';
   const scanLog = {
-    timestamp    : new Date().toISOString(),
+    timestamp   : new Date().toISOString(),
     mode,
-    name         : (parentItem?.name||'') + ' ['+attr.value+']',
-    sku          : (parentItem?.sku||'') + (attr.skuSuffix||''),
-    barcode      : attr.barcode||'',
-    qty          : absQty,
-    before       : oldStock,
-    after        : newStock,
-    variantValue : attr.value,
-    parentSku    : parentItem?.sku||''
+    name        : (parentItem?.name||'')+ ' ['+combo.labels.join(' / ')+']',
+    sku         : combo.sku,
+    barcode     : combo.barcode||'',
+    qty         : Math.abs(delta),
+    before      : oldStock,
+    after       : newStock,
+    variantValue: combo.labels.join(' / '),
+    parentSku   : parentItem?.sku||''
   };
 
   renderVarCards();
   render();
   syncToSheet(scanLog);
-  toast(delta>0?'✅':'📤', `${attr.value}: ${oldStock} → ${newStock}`);
+  toast(delta>0?'✅':'📤', combo.labels.join('/')+': '+oldStock+' → '+newStock);
 }
 
-function getVarStatus(attr){
-  if(attr.stock===0) return 'out';
-  const rpt = attr.reorderPoint ?? 5;
-  if(attr.stock <= rpt) return 'low';
+function variantQuickSet(pid, comboIdx){
+  if(!variants[pid]) return;
+  const combo = variants[pid].combos[comboIdx];
+  const newVal = prompt(`Set exact stock for "${combo.labels.join(' / ')}":`, combo.stock);
+  if(newVal===null) return;
+  const parsed = parseInt(newVal);
+  if(isNaN(parsed)||parsed<0){ toast('⚠️','Invalid quantity'); return; }
+  const delta = parsed-combo.stock;
+  if(delta!==0) variantAdjustStock(pid,comboIdx,delta);
+}
+
+// ── Status helpers ─────────────────────────────────────────
+function getVarStatus(combo){
+  if(combo.stock===0) return 'out';
+  if(combo.stock<=(combo.reorderPoint??5)) return 'low';
   return 'ok';
 }
 
 function getAllVariantAlerts(){
   const alerts=[];
-  for(const [pid, vData] of Object.entries(variants)){
-    const item = items.find(i=>i.id==pid);
+  for(const [pid,vData] of Object.entries(variants)){
+    const item=items.find(i=>i.id==pid);
     if(!item) continue;
-    vData.attrs.forEach((attr,idx)=>{
-      const st = getVarStatus(attr);
-      if(st !== 'ok') alerts.push({pid, idx, item, attr, status:st});
+    (vData.combos||vData.attrs||[]).forEach((c,idx)=>{
+      const st=getVarStatus(c);
+      if(st!=='ok') alerts.push({pid,idx,item,attr:c,status:st});
     });
   }
   return alerts;
 }
 
+// ── Render alerts ──────────────────────────────────────────
 function renderAlerts(){
-  // Parent alerts
   const al=items.filter(i=>getStatus(i)!=='ok').sort((a,b)=>getStatus(a)==='out'?-1:1);
   const el=document.getElementById('alerts-content');
   if(!al.length){el.innerHTML='<div style="color:var(--muted);font-size:13px">🎉 All parent items well stocked!</div>';}
   else{el.innerHTML=al.map(i=>{const c=getStatus(i)==='out';return`<div class="alert-item ${c?'alert-crit':'alert-warn'}"><span>${c?'🔴':'🟡'}</span><div class="alert-text"><strong>${i.name}</strong> (${i.sku}) — ${c?'OUT OF STOCK':'Low: '+i.stock+' left (reorder pt: '+i.reorderPoint+')'}</div><span class="alert-action" onclick="openModal(${i.id})">Restock →</span></div>`}).join('');}
 
-  // Variant alerts
-  const varAlerts = getAllVariantAlerts();
-  const vel = document.getElementById('var-alerts-content');
-  const badge = document.getElementById('var-alert-badge');
+  const varAlerts=getAllVariantAlerts();
+  const vel=document.getElementById('var-alerts-content');
+  const badge=document.getElementById('var-alert-badge');
   if(vel){
     if(!varAlerts.length){
       vel.innerHTML='<div style="color:var(--muted);font-size:13px">🎉 All variants well stocked!</div>';
-      if(badge){ badge.style.display='none'; }
+      if(badge) badge.style.display='none';
     } else {
       if(badge){ badge.textContent=varAlerts.length; badge.style.display='inline'; }
-      vel.innerHTML = varAlerts.map(({pid,idx,item,attr,status})=>{
-        const isOut = status==='out';
-        const rpt = attr.reorderPoint ?? 5;
-        return `<div class="alert-item ${isOut?'alert-crit':'alert-warn'}" style="margin-bottom:8px">
+      vel.innerHTML=varAlerts.map(({pid,idx,item,attr,status})=>{
+        const isOut=status==='out';
+        const rpt=attr.reorderPoint??5;
+        const name=attr.labels?attr.labels.join(' / '):(attr.value||'');
+        return`<div class="alert-item ${isOut?'alert-crit':'alert-warn'}" style="margin-bottom:8px">
           <span>${isOut?'🔴':'🟡'}</span>
-          <div class="alert-text">
-            <strong>${item.name}</strong> — <span style="color:var(--accent)">${attr.value}</span>
-            ${attr.skuSuffix?`<span style="font-family:'DM Mono',monospace;font-size:10px;color:var(--muted)"> (${item.sku}${attr.skuSuffix})</span>`:''}
-            <br>
-            ${isOut
-              ? `<span style="color:var(--danger);font-weight:600">OUT OF STOCK</span>`
-              : `<span style="color:var(--warn)">Low: <strong>${attr.stock}</strong> left — alert set at ≤${rpt}</span>`
-            }
-          </div>
+          <div class="alert-text"><strong>${item.name}</strong> › <span style="color:${isOut?'var(--danger)':'var(--warn)'};font-weight:600">${name}</span><br>
+          ${isOut?`<span style="color:var(--danger);font-weight:700">OUT OF STOCK</span>`:`<span style="color:var(--warn)">Only <strong>${attr.stock}</strong> left (alert ≤${rpt})</span>`}</div>
           <span class="alert-action" onclick="editVariant(${pid});switchTab('variants',document.querySelectorAll('.tab')[4])">Restock →</span>
         </div>`;
       }).join('');
@@ -2058,207 +2278,171 @@ function renderAlerts(){
 }
 
 function updateAlertCount(){
-  const parentN = items.filter(i=>getStatus(i)!=='ok').length;
-  const varN    = getAllVariantAlerts().length;
-  const total   = parentN + varN;
-  const el = document.getElementById('alert-count');
-  el.textContent = total > 0 ? total : '';
-  el.style.display = total > 0 ? '' : 'none';
+  const total=items.filter(i=>getStatus(i)!=='ok').length+getAllVariantAlerts().length;
+  const el=document.getElementById('alert-count');
+  el.textContent=total>0?total:''; el.style.display=total>0?'':'none';
 }
 
+// ── Render variant cards ───────────────────────────────────
 function renderVarCards(){
   const container=document.getElementById('var-cards-container');
   if(!container) return;
   const keys=Object.keys(variants);
   if(!keys.length){
-    container.innerHTML='<div style="color:var(--muted);font-size:13px;text-align:center;padding:40px 20px">No variants yet.<br>Select a product and add variants.</div>';
+    container.innerHTML='<div style="color:var(--muted);font-size:13px;text-align:center;padding:40px 20px"><div style="font-size:32px;margin-bottom:8px">🎨</div>No variants yet.<br>Select a product and generate combinations.</div>';
     return;
   }
 
-  // Collect all variant alerts for the notification panel at top
-  const allAlerts = getAllVariantAlerts();
+  const allAlerts=getAllVariantAlerts();
 
-  let html = '';
-
-  // Global variant notification panel
+  let html='';
+  // Global alert panel
   if(allAlerts.length){
-    html += `<div class="var-notif-panel">
-      <div class="var-notif-panel-title">
-        🔔 Variant Stock Alerts
-        <span style="background:var(--danger);color:#fff;border-radius:99px;padding:1px 9px;font-size:11px">${allAlerts.length}</span>
-      </div>`;
+    html+=`<div class="var-notif-panel"><div class="var-notif-panel-title">🔔 Variant Stock Alerts <span style="background:var(--danger);color:#fff;border-radius:99px;padding:1px 9px;font-size:11px">${allAlerts.length}</span></div>`;
     allAlerts.forEach(({pid,idx,item,attr,status})=>{
-      const isOut = status==='out';
-      const rpt   = attr.reorderPoint ?? 5;
-      html += `<div class="var-notif-banner ${isOut?'var-notif-out':'var-notif-low'}">
+      const isOut=status==='out';
+      const rpt=attr.reorderPoint??5;
+      const name=attr.labels?attr.labels.join(' / '):(attr.value||'');
+      html+=`<div class="var-notif-banner ${isOut?'var-notif-out':'var-notif-low'}">
         <div class="var-notif-icon">${isOut?'🔴':'🟡'}</div>
-        <div class="var-notif-text">
-          <strong>${item.name}</strong> › <span style="font-weight:600;color:${isOut?'var(--danger)':'var(--warn)'}">${attr.value}</span>
-          ${attr.skuSuffix?`<span style="font-family:'DM Mono',monospace;font-size:10px;color:var(--muted)"> ${item.sku}${attr.skuSuffix}</span>`:''}
-          &nbsp;—&nbsp;
-          ${isOut
-            ? `<span style="color:var(--danger);font-weight:700">OUT OF STOCK</span>`
-            : `<span style="color:var(--warn)">Only <strong>${attr.stock}</strong> left (alert below ≤${rpt})</span>`}
-        </div>
+        <div class="var-notif-text"><strong>${item.name}</strong> › <span style="color:${isOut?'var(--danger)':'var(--warn)'};font-weight:600">${name}</span> — ${isOut?'<span style="color:var(--danger)">OUT OF STOCK</span>':`<span style="color:var(--warn)">Only <strong>${attr.stock}</strong> left (≤${rpt})</span>`}</div>
         <span class="var-notif-restock" onclick="variantAdjustStock(${pid},${idx},${rpt*2||10})">+Restock</span>
       </div>`;
     });
-    html += `</div>`;
+    html+=`</div>`;
   } else {
-    html += `<div style="background:color-mix(in srgb,var(--accent) 8%,transparent);border:1px solid color-mix(in srgb,var(--accent) 25%,transparent);border-radius:10px;padding:11px 16px;margin-bottom:14px;font-size:12px;color:var(--accent)">✅ All variant stocks are healthy</div>`;
+    html+=`<div style="background:color-mix(in srgb,var(--accent) 8%,transparent);border:1px solid color-mix(in srgb,var(--accent) 25%,transparent);border-radius:10px;padding:11px 16px;margin-bottom:14px;font-size:12px;color:var(--accent)">✅ All variant stocks are healthy</div>`;
   }
 
-  // Variant product cards
-  html += keys.map(pid=>{
+  html+=keys.map(pid=>{
     const item=items.find(i=>i.id==pid);
     if(!item) return '';
     const v=variants[pid];
-    const totalStock=v.attrs.reduce((s,a)=>s+a.stock,0);
+    const combos=v.combos||v.attrs||[];
+    const axes=v.axes||[];
+    const totalStock=combos.reduce((s,c)=>s+c.stock,0);
     const totalVal=totalStock*item.price;
-    const productAlerts = allAlerts.filter(a=>a.pid==pid);
+    const productAlerts=allAlerts.filter(a=>a.pid==pid);
+    const parentStatusColor=getStatus(item)==='out'?'var(--danger)':getStatus(item)==='low'?'var(--warn)':'var(--accent)';
 
-    const chips=v.attrs.map((a,idx)=>{
-      const rpt        = a.reorderPoint ?? 5;
-      const st         = getVarStatus(a);
-      const statusColor= st==='out'?'var(--danger)':st==='low'?'var(--warn)':'var(--accent)';
-      const bgColor    = v.type==='color'?a.color+'18':'var(--bg)';
-      const borderColor= st!=='ok' ? statusColor : (v.type==='color'?a.color:'var(--border)');
-      const barPct     = Math.min(100, a.stock / Math.max(a.stock, rpt*3) * 100);
-      const statusEmoji= st==='out'?'🔴':st==='low'?'🟡':'🟢';
-      return`<div class="var-chip" style="background:${bgColor};border-color:${borderColor};${st!=='ok'?'box-shadow:0 0 8px '+statusColor+'44':''}">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:3px">
-          <div style="display:flex;align-items:center;gap:5px">
-            ${v.type==='color'?`<span class="var-chip-color" style="background:${a.color}"></span>`:''}
-            <strong style="font-size:12px">${a.value}</strong>
+    // Group combos for display — if 2 axes, show as 2D grid; else flat chips
+    const is2D = axes.length===2;
+    let comboHtml='';
+
+    if(is2D){
+      // Build axis0 × axis1 grid
+      const axis0=axes[0], axis1=axes[1];
+      const axis0vals=axis0.values.map(v=>v.label);
+      const axis1vals=axis1.values.map(v=>v.label);
+
+      // Header row
+      comboHtml+=`<div style="overflow-x:auto"><table style="border-collapse:collapse;font-size:12px;margin-bottom:8px">
+        <thead><tr>
+          <th style="padding:6px 10px;background:var(--surface2);border:1px solid var(--border);font-size:10px;color:var(--muted)">${axis0.name} ↓ / ${axis1.name} →</th>
+          ${axis1vals.map(l=>`<th style="padding:6px 10px;background:var(--surface2);border:1px solid var(--border);font-size:11px;font-weight:600;white-space:nowrap">${l}</th>`).join('')}
+        </tr></thead><tbody>`;
+
+      axis0vals.forEach((a0lbl,a0i)=>{
+        const a0val=axis0.values[a0i];
+        comboHtml+=`<tr><td style="padding:6px 10px;border:1px solid var(--border);font-weight:600;white-space:nowrap;background:var(--surface2)">
+          ${axis0.isColor?`<span style="width:9px;height:9px;border-radius:50%;background:${a0val.color};border:1px solid rgba(255,255,255,.2);display:inline-block;margin-right:5px"></span>`:''} ${a0lbl}</td>`;
+        axis1vals.forEach((_,a1i)=>{
+          const key=a0lbl+'|'+axis1vals[a1i];
+          const cIdx=combos.findIndex(c=>c.key===key);
+          if(cIdx===-1){ comboHtml+=`<td style="padding:6px;border:1px solid var(--border);text-align:center;color:var(--muted)">—</td>`; return; }
+          const c=combos[cIdx];
+          const st=getVarStatus(c);
+          const sc=st==='out'?'var(--danger)':st==='low'?'var(--warn)':'var(--accent)';
+          comboHtml+=`<td style="padding:4px 6px;border:1px solid var(--border);text-align:center;background:${st!=='ok'?'color-mix(in srgb,'+sc+' 8%,transparent)':''}">
+            <div style="font-family:'DM Mono',monospace;font-size:13px;font-weight:700;color:${sc}">${c.stock}</div>
+            <div style="font-size:9px;color:var(--muted)">min ${c.reorderPoint??5}</div>
+            <div style="display:flex;gap:2px;margin-top:3px;justify-content:center">
+              <button onclick="variantAdjustStock(${pid},${cIdx},-1)" style="width:20px;height:20px;background:color-mix(in srgb,var(--danger) 15%,transparent);border:1px solid var(--danger);color:var(--danger);border-radius:4px;cursor:pointer;font-size:12px;padding:0">−</button>
+              <button onclick="variantQuickSet(${pid},${cIdx})" style="width:20px;height:20px;background:var(--surface2);border:1px solid var(--border);color:var(--muted);border-radius:4px;cursor:pointer;font-size:10px;padding:0">✏</button>
+              <button onclick="variantAdjustStock(${pid},${cIdx},1)" style="width:20px;height:20px;background:color-mix(in srgb,var(--green) 15%,transparent);border:1px solid var(--green);color:var(--green);border-radius:4px;cursor:pointer;font-size:12px;padding:0">+</button>
+            </div>
+          </td>`;
+        });
+        comboHtml+=`</tr>`;
+      });
+      comboHtml+=`</tbody></table></div>`;
+    } else {
+      // Flat chips for single axis or 3+ axes
+      comboHtml='<div class="var-grid">'+combos.map((c,cIdx)=>{
+        const st=getVarStatus(c);
+        const sc=st==='out'?'var(--danger)':st==='low'?'var(--warn)':'var(--accent)';
+        const barPct=Math.min(100,c.stock/Math.max(c.stock,(c.reorderPoint??5)*3)*100);
+        return`<div class="var-chip" style="background:${c.color+'18'};border-color:${st!=='ok'?sc:c.color};${st!=='ok'?'box-shadow:0 0 8px '+sc+'44':''}">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:3px">
+            <div style="display:flex;align-items:center;gap:5px">
+              ${c.color&&c.color!=='#00e5a0'?`<span class="var-chip-color" style="background:${c.color}"></span>`:''}
+              <strong style="font-size:12px">${c.labels?c.labels.join(' / '):(c.value||'')}</strong>
+            </div>
+            <span style="font-size:11px">${st==='out'?'🔴':st==='low'?'🟡':'🟢'}</span>
           </div>
-          <span style="font-size:11px">${statusEmoji}</span>
-        </div>
-        ${a.skuSuffix?`<div style="font-size:10px;color:var(--muted);font-family:'DM Mono',monospace">${item.sku}${a.skuSuffix}</div>`:''}
-        ${a.barcode?`<div style="font-size:10px;color:var(--muted);font-family:'DM Mono',monospace">▐${a.barcode}▌</div>`:''}
-        <div class="var-chip-bar"><div class="var-chip-bar-fill" style="width:${barPct}%;background:${statusColor}"></div></div>
-        <div style="color:${statusColor};font-size:14px;font-weight:700;margin:5px 0">${a.stock} <span style="font-size:10px;font-weight:400;color:var(--muted)">units</span></div>
-        <div class="var-reorder-badge" style="${st!=='ok'?'border-color:'+statusColor+';color:'+statusColor:''}">
-          <span>⚠ Min:</span> ${rpt}
-        </div>
-        <div style="display:flex;gap:4px;margin-top:6px">
-          <button onclick="variantAdjustStock(${pid},${idx},-1)" style="flex:1;background:color-mix(in srgb,var(--danger) 15%,transparent);border:1px solid var(--danger);color:var(--danger);border-radius:5px;cursor:pointer;font-size:14px;padding:3px 0;font-weight:700">−</button>
-          <button onclick="variantQuickSet(${pid},${idx})" style="flex:0;background:var(--surface2);border:1px solid var(--border);color:var(--muted);border-radius:5px;cursor:pointer;font-size:10px;padding:3px 6px" title="Set exact quantity">✏</button>
-          <button onclick="variantAdjustStock(${pid},${idx},1)" style="flex:1;background:color-mix(in srgb,var(--green) 15%,transparent);border:1px solid var(--green);color:var(--green);border-radius:5px;cursor:pointer;font-size:14px;padding:3px 0;font-weight:700">+</button>
-        </div>
-        <div class="var-chip-status" style="background:${statusColor}"></div>
-      </div>`;
-    }).join('');
-
-    const parentStatusColor = getStatus(item)==='out'?'var(--danger)':getStatus(item)==='low'?'var(--warn)':'var(--accent)';
+          <div style="font-size:10px;color:var(--muted);font-family:'DM Mono',monospace;margin-bottom:2px">${c.sku||''}</div>
+          <div class="var-chip-bar"><div class="var-chip-bar-fill" style="width:${barPct}%;background:${sc}"></div></div>
+          <div style="color:${sc};font-size:14px;font-weight:700;margin:5px 0">${c.stock} <span style="font-size:10px;font-weight:400;color:var(--muted)">units</span></div>
+          <div class="var-reorder-badge" style="${st!=='ok'?'border-color:'+sc+';color:'+sc:''}"><span>⚠ Min:</span> ${c.reorderPoint??5}</div>
+          <div style="display:flex;gap:4px;margin-top:6px">
+            <button onclick="variantAdjustStock(${pid},${cIdx},-1)" style="flex:1;background:color-mix(in srgb,var(--danger) 15%,transparent);border:1px solid var(--danger);color:var(--danger);border-radius:5px;cursor:pointer;font-size:14px;padding:3px 0;font-weight:700">−</button>
+            <button onclick="variantQuickSet(${pid},${cIdx})" style="flex:0;background:var(--surface2);border:1px solid var(--border);color:var(--muted);border-radius:5px;cursor:pointer;font-size:10px;padding:3px 6px">✏</button>
+            <button onclick="variantAdjustStock(${pid},${cIdx},1)" style="flex:1;background:color-mix(in srgb,var(--green) 15%,transparent);border:1px solid var(--green);color:var(--green);border-radius:5px;cursor:pointer;font-size:14px;padding:3px 0;font-weight:700">+</button>
+          </div>
+          <div class="var-chip-status" style="background:${sc}"></div>
+        </div>`;
+      }).join('')+'</div>';
+    }
 
     return`<div class="var-card" style="${productAlerts.length?'border-color:color-mix(in srgb,var(--warn) 40%,transparent)':''}">
       <div class="var-card-header">
         <div>
           <div class="var-card-name">${item.name}
-            ${productAlerts.length?`<span style="background:var(--danger);color:#fff;border-radius:99px;padding:1px 8px;font-size:10px;margin-left:6px;font-family:'DM Sans',sans-serif;font-weight:600">${productAlerts.length} alert${productAlerts.length>1?'s':''}</span>`:''}
+            ${productAlerts.length?`<span style="background:var(--danger);color:#fff;border-radius:99px;padding:1px 8px;font-size:10px;margin-left:6px">${productAlerts.length} alert${productAlerts.length>1?'s':''}</span>`:''}
           </div>
           <div style="font-size:11px;color:var(--muted);font-family:'DM Mono',monospace;margin-top:2px">
-            ${item.sku} · ${v.label} variants · Parent: <span style="color:${parentStatusColor};font-weight:600">${item.stock} units</span>
+            ${item.sku} · ${combos.length} combos (${axes.map(a=>a.name).join(' × ')}) · Parent: <span style="color:${parentStatusColor};font-weight:600">${item.stock} units</span>
           </div>
         </div>
-        <div style="display:flex;gap:6px;align-items:center">
-          <button class="btn btn-ghost btn-sm" onclick="openSetReorderModal(${pid})" title="Set reorder points for all variants" style="border-color:var(--warn);color:var(--warn)">⚠ Set Min</button>
+        <div style="display:flex;gap:6px">
           <button class="btn btn-ghost btn-sm" onclick="editVariant(${pid})">✏️ Edit</button>
           <button class="btn btn-ghost btn-sm" style="color:var(--danger);border-color:var(--danger)" onclick="deleteVariant(${pid})">🗑</button>
         </div>
       </div>
-      <div class="var-grid">${chips}</div>
+      ${comboHtml}
       <div class="var-summary">
-        <div class="var-summary-item">Variants: <span>${v.attrs.length}</span></div>
+        <div class="var-summary-item">Combinations: <span>${combos.length}</span></div>
         <div class="var-summary-item">Total Stock: <span>${totalStock}</span></div>
         <div class="var-summary-item">Value: <span>₹${totalVal.toLocaleString('en-IN',{maximumFractionDigits:0})}</span></div>
-        <div class="var-summary-item">Low/Out: <span style="color:${productAlerts.length?'var(--danger)':'var(--accent)'}">${productAlerts.length}</span></div>
+        <div class="var-summary-item">Out/Low: <span style="color:${productAlerts.length?'var(--danger)':'var(--accent)'}">${productAlerts.length}</span></div>
       </div>
     </div>`;
   }).join('');
 
-  container.innerHTML = html;
+  container.innerHTML=html;
   updateAlertCount();
-}
-
-// Quick set exact quantity for a variant
-function variantQuickSet(pid, attrIdx){
-  if(!variants[pid]) return;
-  const attr = variants[pid].attrs[attrIdx];
-  const newVal = prompt(`Set exact stock for "${attr.value}":`, attr.stock);
-  if(newVal === null) return;
-  const parsed = parseInt(newVal);
-  if(isNaN(parsed) || parsed < 0){ toast('⚠️','Invalid quantity'); return; }
-  const delta = parsed - attr.stock;
-  if(delta !== 0) variantAdjustStock(pid, attrIdx, delta);
-}
-
-// Quick reorder modal for setting all min levels at once
-function openSetReorderModal(pid){
-  const item = items.find(i=>i.id==pid);
-  const v = variants[pid];
-  if(!item||!v) return;
-
-  // Build a simple modal-style toast panel
-  const existing = document.getElementById('reorder-modal-overlay');
-  if(existing) existing.remove();
-
-  const overlay = document.createElement('div');
-  overlay.id = 'reorder-modal-overlay';
-  overlay.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:200;display:flex;align-items:center;justify-content:center';
-  overlay.innerHTML=`
-    <div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:24px;width:420px;max-width:95vw;max-height:85vh;overflow-y:auto">
-      <div style="font-family:'Syne',sans-serif;font-size:16px;font-weight:700;margin-bottom:4px">⚠ Set Low Stock Alert — Min Quantity</div>
-      <div style="color:var(--muted);font-size:12px;margin-bottom:18px">${item.name} · ${v.label} variants — Alert fires when stock drops at or below this number</div>
-      ${v.attrs.map((a,idx)=>{
-        const rpt = a.reorderPoint ?? 5;
-        const st  = getVarStatus(a);
-        const sc  = st==='out'?'var(--danger)':st==='low'?'var(--warn)':'var(--accent)';
-        return`<div style="display:flex;align-items:center;gap:11px;padding:10px 0;border-bottom:1px solid var(--border)">
-          ${v.type==='color'?`<span style="width:12px;height:12px;border-radius:50%;background:${a.color};flex-shrink:0;border:1px solid rgba(255,255,255,.2)"></span>`:''}
-          <div style="flex:1">
-            <div style="font-weight:600;font-size:13px">${a.value}</div>
-            <div style="font-size:11px;color:${sc}">Current: ${a.stock} units</div>
-          </div>
-          <div style="display:flex;flex-direction:column;align-items:center;gap:2px">
-            <div style="font-size:10px;color:var(--warn);text-transform:uppercase;letter-spacing:.3px">Alert below</div>
-            <input id="rp-input-${idx}" type="number" min="0" value="${rpt}" style="width:65px;padding:6px 8px;background:var(--bg);border:2px solid var(--warn);border-radius:7px;color:var(--text);font-family:'DM Mono',monospace;font-size:14px;text-align:center;outline:none">
-          </div>
-        </div>`;
-      }).join('')}
-      <div style="display:flex;gap:8px;margin-top:18px;justify-content:flex-end">
-        <button onclick="document.getElementById('reorder-modal-overlay').remove()" style="padding:8px 16px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text);cursor:pointer;font-family:'DM Sans',sans-serif">Cancel</button>
-        <button onclick="saveReorderPoints(${pid})" style="padding:8px 16px;background:var(--accent);border:none;border-radius:8px;color:#000;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif">💾 Save Alert Thresholds</button>
-      </div>
-    </div>`;
-  document.body.appendChild(overlay);
-  overlay.addEventListener('click', e=>{ if(e.target===overlay) overlay.remove(); });
-}
-
-function saveReorderPoints(pid){
-  const v = variants[pid];
-  if(!v) return;
-  v.attrs.forEach((a,idx)=>{
-    const inp = document.getElementById('rp-input-'+idx);
-    if(inp) a.reorderPoint = parseInt(inp.value)||0;
-  });
-  localStorage.setItem('sf_variants', JSON.stringify(variants));
-  document.getElementById('reorder-modal-overlay')?.remove();
-  renderVarCards();
-  updateAlertCount();
-  syncToSheet();
-  toast('✅','Alert thresholds saved & synced!');
 }
 
 function deleteVariant(pid){
   if(!confirm('Delete all variants for this product?')) return;
   delete variants[pid];
-  localStorage.setItem('sf_variants', JSON.stringify(variants));
-  renderVarCards();
-  populateVarProductSelect();
-  syncToSheet();
+  localStorage.setItem('sf_variants',JSON.stringify(variants));
+  renderVarCards(); populateVarProductSelect(); syncToSheet();
   toast('🗑️','Variants deleted');
 }
+
+// ── Barcode scan integration (multi-combo lookup) ──────────
+// (processBarcodeScan already uses variants[pid].combos via matchedVarParent logic)
+// Override the lookup portion to handle new combo structure:
+function findVariantByBarcode(barcode){
+  for(const [pid,vData] of Object.entries(variants)){
+    const combos=vData.combos||vData.attrs||[];
+    const idx=combos.findIndex(c=>c.barcode===barcode||c.sku===barcode);
+    if(idx!==-1) return { pid, comboIdx:idx, combo:combos[idx] };
+  }
+  return null;
+}
+
 
 /* ============================================================
    PRODUCTION RECIPES
@@ -2631,8 +2815,9 @@ async function init() {
   const fd = new Date(); fd.setDate(fd.getDate()+30);
   document.getElementById('g-due-date').value = fd.toISOString().split('T')[0];
 
-  // Init variants form with 3 empty rows
-  addVarAttrRow(); addVarAttrRow(); addVarAttrRow();
+  // Init variants form
+  varAxes = [];
+  renderAxes();
 
   // Init production form with default rows
   addRawRow('',1,0); addRawRow('',1,0); addRawRow('',1,0);
