@@ -6,7 +6,7 @@
 <title>StockFlow — Inventory & GST Billing</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Syne:wght@700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+<script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
 <style>
 :root{--bg:#0d0f14;--surface:#161b24;--surface2:#1e2535;--border:#2a3347;--accent:#00e5a0;--accent2:#ff6b35;--warn:#ffd166;--danger:#ff4757;--blue:#5eb8ff;--green:#34a853;--text:#e8edf5;--muted:#7a8ba0;--radius:10px}
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
@@ -266,143 +266,48 @@ kbd{background:var(--surface2);border:1px solid var(--border);border-radius:4px;
 .pulse-ring{animation:pulseRing 2s infinite}
 @keyframes pulseRing{0%,100%{opacity:1}50%{opacity:.4}}
 
-/* ===== VARIANTS — 3-PANEL LAYOUT ===== */
-.var-page{display:grid;grid-template-columns:230px 1fr 260px;height:calc(100vh - 62px);overflow:hidden;margin:-20px -24px}
-.var-sidebar{background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden}
-.var-main{overflow-y:auto;background:var(--bg);padding:16px;display:flex;flex-direction:column}
-.var-notif-rail{background:var(--surface);border-left:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden}
-/* Slide-out form drawer */
-.var-drawer{position:fixed;top:0;right:0;width:460px;height:100vh;background:var(--surface);border-left:2px solid var(--border);z-index:200;display:flex;flex-direction:column;transform:translateX(100%);transition:transform .28s cubic-bezier(.4,0,.2,1);box-shadow:-12px 0 40px rgba(0,0,0,.5)}
-.var-drawer.open{transform:translateX(0)}
-.var-drawer-hd{padding:16px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
-.var-drawer-bd{overflow-y:auto;flex:1;padding:18px 20px}
-.var-drawer-ft{padding:12px 20px;border-top:1px solid var(--border);display:flex;gap:8px;flex-shrink:0}
-.var-scrim{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:199;opacity:0;pointer-events:none;transition:opacity .28s}
-.var-scrim.show{opacity:1;pointer-events:all}
-/* Sidebar */
-.var-sb-hd{padding:12px 14px;border-bottom:1px solid var(--border);flex-shrink:0}
-.var-sb-body{overflow-y:auto;flex:1;padding:6px}
-.var-idx-item{display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:8px;cursor:pointer;transition:background .12s;border-left:2px solid transparent}
-.var-idx-item:hover{background:var(--surface2)}
-.var-idx-item.active{background:color-mix(in srgb,var(--accent) 8%,transparent);border-left-color:var(--accent)}
-.var-idx-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0}
-/* Main area */
-.var-topbar{display:flex;gap:8px;margin-bottom:12px;align-items:center}
-.var-search{flex:1;background:var(--surface);border:1px solid var(--border);border-radius:8px;color:var(--text);padding:8px 12px;font-family:'DM Sans',sans-serif;font-size:13px;outline:none}
-.var-search:focus{border-color:var(--accent)}
-.var-fchip{padding:6px 12px;border-radius:99px;border:1px solid var(--border);background:var(--surface);color:var(--muted);font-size:11px;font-weight:600;cursor:pointer;transition:all .15s;white-space:nowrap}
-.var-fchip.on{background:color-mix(in srgb,var(--accent) 15%,transparent);border-color:var(--accent);color:var(--accent)}
-.var-fchip.on.danger{background:color-mix(in srgb,var(--danger) 15%,transparent);border-color:var(--danger);color:var(--danger)}
-/* Cards */
-.var-card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:16px;margin-bottom:10px;scroll-margin-top:10px;transition:border-color .2s,box-shadow .2s}
-.var-card.alerted{border-color:color-mix(in srgb,var(--warn) 50%,transparent)}
-.var-card.critical{border-color:color-mix(in srgb,var(--danger) 50%,transparent);box-shadow:0 0 0 1px color-mix(in srgb,var(--danger) 15%,transparent)}
-.var-card-hd{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:12px}
-.var-card-name{font-family:'Syne',sans-serif;font-size:14px;font-weight:700}
-/* Notification rail */
-.var-rail-hd{padding:12px 14px 10px;border-bottom:1px solid var(--border);flex-shrink:0}
-.var-rail-body{overflow-y:auto;flex:1;padding:8px}
-.var-notif{border-radius:9px;padding:10px 12px;margin-bottom:7px;cursor:pointer;transition:all .18s;position:relative;border:1px solid transparent}
-.var-notif.nout{background:color-mix(in srgb,var(--danger) 11%,transparent);border-color:color-mix(in srgb,var(--danger) 30%,transparent)}
-.var-notif.nlow{background:color-mix(in srgb,var(--warn) 10%,transparent);border-color:color-mix(in srgb,var(--warn) 28%,transparent)}
-.var-notif:hover{filter:brightness(1.12)}
-.var-notif.gone{opacity:0;height:0;margin:0;padding:0;overflow:hidden;pointer-events:none;transition:all .22s}
-.var-notif-x{position:absolute;top:7px;right:8px;background:none;border:none;color:var(--muted);cursor:pointer;font-size:12px;line-height:1;padding:1px 4px;border-radius:4px;opacity:.5}
-.var-notif-x:hover{opacity:1;background:var(--surface2)}
-/* Grid/chip kept from before */
-.var-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:8px}
-.var-chip{border-radius:9px;padding:10px 12px;font-size:12px;border:1.5px solid transparent;position:relative;overflow:hidden}
-.var-chip-color{width:10px;height:10px;border-radius:50%;display:inline-block;margin-right:4px;border:1px solid rgba(255,255,255,.25);vertical-align:middle}
-.var-chip-bar{height:3px;border-radius:99px;background:var(--border);margin-top:5px;overflow:hidden}
-.var-chip-bar-fill{height:100%;border-radius:99px;transition:width .4s}
-.var-chip-status{position:absolute;top:5px;right:6px;width:6px;height:6px;border-radius:50%}
-.var-reorder-badge{display:inline-flex;align-items:center;gap:4px;font-size:10px;font-family:'DM Mono',monospace;background:var(--surface);border:1px solid var(--border);border-radius:5px;padding:2px 7px;margin-top:3px}
-.var-summary{display:flex;gap:14px;flex-wrap:wrap;margin-top:10px;padding-top:10px;border-top:1px solid var(--border)}
-.var-summary-item{font-size:11px;color:var(--muted)}
-.var-summary-item span{color:var(--text);font-weight:600;font-family:'DM Mono',monospace}
-/* Axis builder */
-.var-axis{background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:13px;margin-bottom:9px}
-.var-axis-name-inp{background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--text);padding:5px 10px;font-family:'DM Sans',sans-serif;font-size:13px;flex:1;outline:none;transition:border-color .2s}
-.var-axis-name-inp:focus{border-color:var(--accent)}
-.var-axis-tag{display:inline-flex;align-items:center;gap:5px;background:var(--bg);border:1px solid var(--border);border-radius:99px;padding:3px 9px;font-size:12px;margin:2px}
-.var-axis-tagx{background:none;border:none;color:var(--danger);cursor:pointer;font-size:13px;padding:0 2px;line-height:1}
-.var-axis-valinp{background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--text);padding:5px 10px;font-family:'DM Sans',sans-serif;font-size:12px;flex:1;outline:none}
-.var-axis-valinp:focus{border-color:var(--accent)}
-.var-axis-colinp{width:34px;height:34px;border:1px solid var(--border);border-radius:6px;cursor:pointer;padding:2px;background:var(--bg);flex-shrink:0}
-/* Matrix table */
-.mx-th{background:var(--surface2);padding:7px 10px;font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;font-weight:700;white-space:nowrap;border:1px solid var(--border)}
-.mx-td{padding:5px 7px;border:1px solid var(--border);vertical-align:middle}
-.mx-inp{width:58px;background:var(--bg);border:1px solid var(--border);border-radius:5px;color:var(--text);font-family:'DM Mono',monospace;font-size:12px;text-align:center;padding:3px 5px;outline:none}
-.mx-inp:focus{border-color:var(--accent)}
-.mx-barinp{width:105px;background:var(--bg);border:1px solid var(--border);border-radius:5px;color:var(--text);font-family:'DM Mono',monospace;font-size:11px;padding:3px 6px;outline:none}
-.mx-barinp:focus{border-color:var(--accent)}
-.mx-sku{font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);background:var(--surface);border-radius:4px;padding:1px 5px}
-@keyframes slideIn{from{opacity:0;transform:translateY(-5px)}to{opacity:1;transform:translateY(0)}}
-@keyframes pulse{0%,100%{opacity:1}50%{opacity:.5}}
-.var-alert-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0;animation:pulse 1.5s infinite}
-.notif-bell-count{position:absolute;top:-5px;right:-7px;background:var(--danger);color:#fff;font-size:9px;font-weight:700;border-radius:99px;padding:1px 5px;min-width:16px;text-align:center;line-height:14px;animation:pulse 1.5s infinite}
+/* ===== VARIANTS ===== */
+.var-layout{display:grid;grid-template-columns:1fr 1fr;gap:16px;align-items:start}
+.var-form{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:22px}
+.var-list{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:22px}
+.var-title{font-family:'Syne',sans-serif;font-size:15px;font-weight:700;margin-bottom:16px}
 .var-product-select{width:100%;padding:9px 13px;background:var(--bg);border:1px solid var(--border);border-radius:8px;color:var(--text);font-family:'DM Sans',sans-serif;font-size:13px;outline:none;margin-bottom:14px}
+.var-attr-row{display:grid;grid-template-columns:1fr 1fr 80px 36px;gap:7px;margin-bottom:7px;align-items:center}
 .var-attr-input{padding:8px 10px;background:var(--bg);border:1px solid var(--border);border-radius:7px;color:var(--text);font-family:'DM Sans',sans-serif;font-size:12px;outline:none;width:100%}
 .var-attr-input:focus{border-color:var(--accent)}
+.color-dot-input{width:36px;height:36px;border-radius:7px;border:1px solid var(--border);cursor:pointer;padding:2px}
+.var-del-btn{background:none;border:1px solid var(--border);border-radius:7px;color:var(--danger);cursor:pointer;width:36px;height:36px;display:flex;align-items:center;justify-content:center;font-size:14px;transition:background .15s}
+.var-del-btn:hover{background:color-mix(in srgb,var(--danger) 15%,transparent)}
+.var-card{background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:16px;margin-bottom:12px}
+.var-card-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+.var-card-name{font-family:'Syne',sans-serif;font-size:14px;font-weight:700}
+.var-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:8px}
+.var-chip{border-radius:8px;padding:9px 12px;font-size:12px;font-weight:500;border:1.5px solid transparent;position:relative;overflow:hidden}
+.var-chip-color{width:10px;height:10px;border-radius:50%;display:inline-block;margin-right:5px;border:1px solid rgba(255,255,255,.25);vertical-align:middle}
+.var-chip-stock{font-family:'DM Mono',monospace;font-size:11px;color:var(--muted);margin-top:2px}
+.var-chip-status{position:absolute;top:5px;right:6px;width:6px;height:6px;border-radius:50%}
 
-/* ===== FINANCE IQ TAB ===== */
-#tab-finance{font-family:'DM Sans',sans-serif}
-.fi-tabs{display:flex;gap:2px;background:var(--surface2);border-radius:9px;padding:3px;margin-bottom:18px;flex-wrap:wrap;border:1px solid var(--border)}
-.fi-tab{padding:6px 13px;border-radius:6px;cursor:pointer;font-size:12px;font-weight:600;color:var(--muted);border:none;background:none;transition:all .15s;white-space:nowrap}
-.fi-tab:hover{color:var(--text)}
-.fi-tab.active{background:var(--surface);color:var(--text);border:1px solid var(--border)}
-.fi-section{display:none}.fi-section.active{display:block}
-.fi-grid2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
-.fi-grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px}
-.fi-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:18px}
-.fi-card-title{font-family:'Syne',sans-serif;font-size:14px;font-weight:700;margin-bottom:3px;color:var(--accent)}
-.fi-card-sub{font-size:11px;color:var(--muted);margin-bottom:14px}
-.fi-label{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;margin-bottom:4px}
-.fi-input{width:100%;padding:8px 11px;background:var(--bg);border:1px solid var(--border);border-radius:7px;color:var(--text);font-family:'DM Sans',sans-serif;font-size:13px;outline:none;transition:border-color .2s;margin-bottom:9px}
-.fi-input:focus{border-color:var(--accent)}
-.fi-row{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-bottom:2px}
-.fi-row3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:9px;margin-bottom:2px}
-.fi-result{background:var(--surface2);border-radius:9px;padding:12px 15px;margin-top:11px}
-.fi-result-lbl{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;margin-bottom:2px}
-.fi-result-val{font-family:'DM Mono',monospace;font-size:22px;font-weight:700}
-.fi-result-row{display:flex;gap:10px;flex-wrap:wrap}
-.fi-result-item{flex:1;min-width:90px}
-.fi-pill{display:inline-flex;align-items:center;padding:2px 9px;border-radius:99px;font-size:11px;font-weight:700}
-.fi-pill-g{background:color-mix(in srgb,var(--accent) 15%,transparent);color:var(--accent)}
-.fi-pill-r{background:color-mix(in srgb,var(--danger) 15%,transparent);color:var(--danger)}
-.fi-pill-y{background:color-mix(in srgb,var(--warn) 15%,transparent);color:var(--warn)}
-.fi-pill-b{background:color-mix(in srgb,var(--blue) 15%,transparent);color:var(--blue)}
-.fi-pill-p{background:color-mix(in srgb,#c084fc 15%,transparent);color:#c084fc}
-.fi-kpis{display:grid;grid-template-columns:repeat(auto-fill,minmax(155px,1fr));gap:10px;margin-bottom:16px}
-.fi-kpi{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:14px}
-.fi-kpi-lbl{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;margin-bottom:5px}
-.fi-kpi-val{font-family:'DM Mono',monospace;font-size:19px;font-weight:700}
-.fi-kpi-sub{font-size:10px;color:var(--muted);margin-top:2px}
-.fi-hbar-wrap{margin:7px 0}
-.fi-hbar-lbl{display:flex;justify-content:space-between;font-size:11px;margin-bottom:3px}
-.fi-hbar{height:5px;background:var(--border);border-radius:99px;overflow:hidden}
-.fi-hbar-fill{height:100%;border-radius:99px;transition:width .5s cubic-bezier(.4,0,.2,1)}
-.fi-list-item{display:flex;align-items:flex-start;gap:9px;padding:9px 0;border-bottom:1px solid var(--border)}
-.fi-list-item:last-child{border-bottom:none}
-.fi-del{background:none;border:none;color:var(--muted);cursor:pointer;font-size:13px;padding:0 3px;transition:color .15s}
-.fi-del:hover{color:var(--danger)}
-.fi-bs-table{width:100%;border-collapse:collapse;font-size:13px}
-.fi-bs-table th{background:var(--surface2);padding:7px 11px;text-align:left;font-size:10px;text-transform:uppercase;letter-spacing:.4px;color:var(--muted);border-bottom:1px solid var(--border)}
-.fi-bs-table td{padding:7px 11px;border-bottom:1px solid var(--border)}
-.fi-bs-table tr:last-child td{border-bottom:none}
-.fi-bs-total td{background:var(--surface2);font-weight:700}
-.fi-ratio-card{background:var(--surface2);border:1px solid var(--border);border-radius:9px;padding:13px}
-.fi-ratio-name{font-size:12px;font-weight:700;margin-bottom:2px}
-.fi-ratio-formula{font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);margin-bottom:7px}
-.fi-ratio-val{font-family:'DM Mono',monospace;font-size:22px;font-weight:700}
-.fi-range{width:100%;accent-color:var(--accent);margin:4px 0 10px}
-.fi-costs-table{width:100%;border-collapse:collapse;font-size:12px}
-.fi-costs-table th{background:var(--surface2);padding:6px 10px;text-align:left;font-size:10px;text-transform:uppercase;letter-spacing:.4px;color:var(--muted)}
-.fi-costs-table td{padding:6px 10px;border-top:1px solid var(--border);vertical-align:middle}
-.fi-tag-fixed{background:color-mix(in srgb,var(--blue) 15%,transparent);color:var(--blue);border-radius:4px;padding:2px 7px;font-size:10px;font-weight:700}
-.fi-tag-var{background:color-mix(in srgb,var(--accent) 15%,transparent);color:var(--accent);border-radius:4px;padding:2px 7px;font-size:10px;font-weight:700}
-.fi-save-bar{display:flex;align-items:center;justify-content:space-between;background:var(--surface2);border-radius:9px;padding:10px 14px;margin-bottom:16px;gap:10px}
+/* ===== VARIANT NOTIFICATIONS ===== */
+.var-notif-banner{border-radius:10px;padding:10px 14px;margin-bottom:8px;display:flex;align-items:center;gap:10px;font-size:12px;animation:slideIn .25s ease}
+@keyframes slideIn{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:translateY(0)}}
+.var-notif-out{background:color-mix(in srgb,var(--danger) 10%,transparent);border:1px solid color-mix(in srgb,var(--danger) 35%,transparent)}
+.var-notif-low{background:color-mix(in srgb,var(--warn) 10%,transparent);border:1px solid color-mix(in srgb,var(--warn) 35%,transparent)}
+.var-notif-icon{font-size:15px;flex-shrink:0}
+.var-notif-text{flex:1;line-height:1.5}
+.var-notif-restock{font-size:11px;color:var(--accent);cursor:pointer;text-decoration:underline;flex-shrink:0}
+.var-reorder-badge{display:inline-flex;align-items:center;gap:4px;font-size:10px;font-family:'DM Mono',monospace;background:var(--surface);border:1px solid var(--border);border-radius:5px;padding:2px 7px;margin-top:3px}
+.var-chip-reorder-input{width:100%;background:var(--bg);border:1px solid var(--border);border-radius:5px;color:var(--text);font-family:'DM Mono',monospace;font-size:11px;text-align:center;padding:3px 5px;margin-top:5px;outline:none}
+.var-chip-reorder-input:focus{border-color:var(--accent)}
+.var-chip-reorder-label{font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:.3px;margin-top:4px}
+.var-notif-panel{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:16px;margin-bottom:16px}
+.var-notif-panel-title{font-family:'Syne',sans-serif;font-size:13px;font-weight:700;margin-bottom:12px;display:flex;align-items:center;gap:8px}
+.notif-bell{position:relative;cursor:pointer;display:inline-flex}
+.notif-bell-count{position:absolute;top:-5px;right:-7px;background:var(--danger);color:#fff;font-size:9px;font-weight:700;border-radius:99px;padding:1px 5px;min-width:16px;text-align:center;line-height:14px;animation:pulse 1.5s infinite}
+.var-chip-bar{height:3px;border-radius:99px;background:var(--border);margin-top:5px;overflow:hidden}
+.var-chip-bar-fill{height:100%;border-radius:99px;transition:width .4s}
+.var-alert-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0;animation:pulse 1.5s infinite}
 
+/* ===== PRODUCTION TAB ===== */
 .prod-layout{display:grid;grid-template-columns:340px 1fr;gap:16px;align-items:start}
 .prod-form-wrap{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:22px;position:sticky;top:80px}
 .prod-list-wrap{display:flex;flex-direction:column;gap:14px}
@@ -463,33 +368,6 @@ kbd{background:var(--surface2);border:1px solid var(--border);border-radius:4px;
 .var-summary{display:flex;gap:14px;flex-wrap:wrap;margin-top:10px;padding-top:10px;border-top:1px solid var(--border)}
 .var-summary-item{font-size:11px;color:var(--muted)}
 .var-summary-item span{color:var(--text);font-weight:600;font-family:'DM Mono',monospace}
-
-/* ===== VARIANT AXIS BUILDER ===== */
-.var-axis{background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:14px;margin-bottom:10px}
-.var-axis-header{display:flex;align-items:center;gap:8px;margin-bottom:10px}
-.var-axis-label{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;font-weight:700;flex:1}
-.var-axis-name-input{background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--text);padding:5px 10px;font-family:'DM Sans',sans-serif;font-size:13px;flex:1;outline:none;transition:border-color .2s}
-.var-axis-name-input:focus{border-color:var(--accent)}
-.var-axis-values{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px}
-.var-axis-tag{display:inline-flex;align-items:center;gap:5px;background:var(--bg);border:1px solid var(--border);border-radius:99px;padding:4px 10px;font-size:12px;cursor:default}
-.var-axis-tag-del{background:none;border:none;color:var(--danger);cursor:pointer;font-size:13px;line-height:1;padding:0 2px}
-.var-axis-add-wrap{display:flex;gap:6px}
-.var-axis-value-input{background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--text);padding:5px 10px;font-family:'DM Sans',sans-serif;font-size:12px;flex:1;outline:none}
-.var-axis-value-input:focus{border-color:var(--accent)}
-.var-axis-color-input{width:36px;height:36px;border:1px solid var(--border);border-radius:6px;cursor:pointer;padding:2px;background:var(--bg)}
-
-/* ===== MATRIX TABLE ===== */
-.matrix-th{background:var(--surface2);padding:8px 12px;font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;font-weight:700;white-space:nowrap;border:1px solid var(--border)}
-.matrix-th.combo-col{color:var(--text);font-weight:600;text-transform:none;font-size:12px}
-.matrix-td{padding:6px 8px;border:1px solid var(--border);vertical-align:middle}
-.matrix-input{width:60px;background:var(--bg);border:1px solid var(--border);border-radius:5px;color:var(--text);font-family:'DM Mono',monospace;font-size:12px;text-align:center;padding:4px 6px;outline:none}
-.matrix-input:focus{border-color:var(--accent)}
-.matrix-input.warn-input{border-color:var(--warn)}
-.matrix-barcode-input{width:110px;background:var(--bg);border:1px solid var(--border);border-radius:5px;color:var(--text);font-family:'DM Mono',monospace;font-size:11px;padding:4px 6px;outline:none}
-.matrix-barcode-input:focus{border-color:var(--accent)}
-.matrix-combo-label{display:flex;align-items:center;gap:6px;white-space:nowrap;font-size:12px}
-.matrix-color-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0;border:1px solid rgba(255,255,255,.15)}
-.matrix-sku-badge{font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);background:var(--surface);border-radius:4px;padding:1px 5px;margin-left:4px}
 </style>
 </head>
 <body>
@@ -511,7 +389,6 @@ kbd{background:var(--surface2);border:1px solid var(--border);border-radius:4px;
     <button class="tab" onclick="switchTab('iteration',this)">🔁 Iteration</button>
     <button class="tab" onclick="switchTab('alerts',this)">⚠ Alerts <span id="alert-count" style="background:var(--danger);color:#fff;border-radius:99px;padding:1px 6px;font-size:10px;margin-left:2px;vertical-align:middle"></span></button>
     <button class="tab" onclick="switchTab('gst',this)">🧾 GST Bill</button>
-    <button class="tab" onclick="switchTab('finance',this)">📈 Finance IQ</button>
   </div>
   <div class="topbar-right">
     <button class="btn btn-ghost btn-sm" onclick="showSheetsSetup()">⚙️ Sheet Setup</button>
@@ -615,9 +492,6 @@ kbd{background:var(--surface2);border:1px solid var(--border);border-radius:4px;
           <button class="btn btn-green" onclick="processBarcodeScan('add')" style="height:46px;align-self:flex-end">➕ Add</button>
         </div>
         <div id="add-cam-reader" class="reader-scan"></div>
-        <!-- DEBUG PANEL -->
-        <div id="add-debug-panel" style="display:none"></div>
-        <button onclick="showBarcodeDebug()" style="margin-top:10px;width:100%;padding:10px;background:#1a1200;border:1px solid #ffd166;border-radius:8px;color:#ffd166;font-size:12px;font-weight:700;cursor:pointer">🔍 DEBUG — tap to show stored barcodes</button>
         <div class="not-found-card" id="add-not-found">
           <div style="font-size:28px;margin-bottom:6px">🔍</div>
           <div style="font-weight:600;margin-bottom:3px">Barcode not found in inventory</div>
@@ -738,102 +612,55 @@ kbd{background:var(--surface2);border:1px solid var(--border);border-radius:4px;
     </div>
   </div>
 
-  <!-- VARIANTS TAB — 3-panel: sidebar index | main cards | notif rail -->
-  <div id="tab-variants" class="hidden" style="padding:0;overflow:hidden">
-
-    <!-- Scrim behind drawer -->
-    <div class="var-scrim" id="var-scrim" onclick="closeVarDrawer()"></div>
-
-    <!-- Slide-out form drawer -->
-    <div class="var-drawer" id="var-drawer">
-      <div class="var-drawer-hd">
-        <div>
-          <div style="font-family:'Syne',sans-serif;font-size:15px;font-weight:700" id="var-drawer-title">Add Variants</div>
-          <div style="font-size:11px;color:var(--muted);margin-top:1px">Define attributes → auto-generate all combinations</div>
+  <!-- VARIANTS TAB -->
+  <div id="tab-variants" class="hidden">
+    <div class="var-layout">
+      <div class="var-form">
+        <div class="var-title">🎨 Add Product Variants</div>
+        <div style="margin-bottom:14px">
+          <label style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;display:block;margin-bottom:5px">Parent Product</label>
+          <select class="var-product-select" id="var-product-sel"><option value="">— Select a product —</option></select>
         </div>
-        <button onclick="closeVarDrawer()" style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--muted);cursor:pointer;padding:5px 11px;font-size:14px">✕</button>
-      </div>
-      <div class="var-drawer-bd" id="var-drawer-body">
-        <div style="margin-bottom:13px">
-          <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;margin-bottom:5px">Parent Product</div>
-          <select class="var-product-select" id="var-product-sel"></select>
-        </div>
-        <div style="background:var(--surface2);border-radius:9px;padding:11px;margin-bottom:13px">
-          <div style="font-size:10px;color:var(--accent);font-weight:700;text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">⚡ Quick Presets</div>
-          <div style="display:flex;gap:5px;flex-wrap:wrap">
-            <button class="btn btn-ghost btn-sm" onclick="applyPreset('bandana')" style="font-size:11px">🐕 Bandana</button>
-            <button class="btn btn-ghost btn-sm" onclick="applyPreset('tshirt')" style="font-size:11px">👕 T-Shirt</button>
-            <button class="btn btn-ghost btn-sm" onclick="applyPreset('shoes')" style="font-size:11px">👟 Shoes</button>
-            <button class="btn btn-ghost btn-sm" onclick="applyPreset('colorsonly')" style="font-size:11px">🌈 Colors</button>
-            <button class="btn btn-ghost btn-sm" onclick="applyPreset('sizesonly')" style="font-size:11px">📐 Sizes</button>
+        <div style="margin-bottom:14px">
+          <label style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;display:block;margin-bottom:8px">Variant Type</label>
+          <div style="display:flex;gap:7px;flex-wrap:wrap">
+            <button class="btn btn-ghost btn-sm var-type-btn" data-type="color" onclick="setVarType('color',this)" style="border-color:var(--accent);color:var(--accent)">🎨 Color</button>
+            <button class="btn btn-ghost btn-sm var-type-btn" data-type="size" onclick="setVarType('size',this)">📐 Size</button>
+            <button class="btn btn-ghost btn-sm var-type-btn" data-type="material" onclick="setVarType('material',this)">🧵 Material</button>
+            <button class="btn btn-ghost btn-sm var-type-btn" data-type="custom" onclick="setVarType('custom',this)">✏️ Custom</button>
           </div>
         </div>
-        <div id="var-axes-container"></div>
-        <button class="btn btn-ghost btn-sm" onclick="addVarAxis()" style="width:100%;margin-bottom:13px;border-style:dashed;font-size:12px">+ Add Attribute (Color, Size, Material…)</button>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:13px">
-          <div><div style="font-size:10px;color:var(--muted);text-transform:uppercase;margin-bottom:4px">Default Stock</div><input class="var-attr-input" id="var-default-stock" type="number" min="0" value="0"></div>
-          <div><div style="font-size:10px;color:var(--warn);text-transform:uppercase;margin-bottom:4px">Default Min ⚠</div><input class="var-attr-input" id="var-default-reorder" type="number" min="0" value="5" style="border-color:var(--warn)"></div>
-          <div><div style="font-size:10px;color:var(--blue);text-transform:uppercase;margin-bottom:4px">Default Cost ₹</div><input class="var-attr-input" id="var-default-cost" type="number" min="0" step="0.01" value="0" style="border-color:var(--blue)"></div>
-          <div><div style="font-size:10px;color:var(--accent);text-transform:uppercase;margin-bottom:4px">Default Sell ₹</div><input class="var-attr-input" id="var-default-price" type="number" min="0" step="0.01" value="0"></div>
+        <div id="var-custom-label-wrap" style="display:none;margin-bottom:14px">
+          <label style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;display:block;margin-bottom:5px">Variant Label</label>
+          <input class="var-attr-input" id="var-custom-label" placeholder="e.g. Flavour, Pack Size..." style="width:100%">
         </div>
-        <!-- Matrix editor lives here after Generate -->
-        <div id="var-matrix-editor" style="display:none">
-          <div style="font-family:'Syne',sans-serif;font-size:13px;font-weight:700;margin-bottom:3px" id="matrix-editor-title"></div>
-          <div style="font-size:11px;color:var(--muted);margin-bottom:11px" id="matrix-editor-sub"></div>
-          <div style="overflow-x:auto;border:1px solid var(--border);border-radius:8px">
-            <table id="matrix-table" style="border-collapse:collapse;font-size:11px;min-width:100%"></table>
-          </div>
+        <div style="display:grid;grid-template-columns:1.2fr 0.8fr 0.9fr 60px 60px 36px;gap:7px;margin-bottom:6px">
+          <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.3px">Value</div>
+          <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.3px">SKU Suffix</div>
+          <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.3px">Barcode</div>
+          <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.3px">Stock</div>
+          <div style="font-size:10px;color:var(--warn);text-transform:uppercase;letter-spacing:.3px" title="Alert when stock drops below this">Min ⚠</div>
+          <div></div>
         </div>
-      </div>
-      <div class="var-drawer-ft">
-        <button class="btn btn-ghost" onclick="generateMatrix()" style="flex:1;font-size:12px">⚡ Generate</button>
-        <button class="btn btn-primary" onclick="saveVariants()" style="flex:2">💾 Save</button>
-        <button class="btn btn-ghost" onclick="clearVarForm()" style="font-size:12px">↺</button>
-      </div>
-    </div>
-
-    <!-- 3-panel body -->
-    <div class="var-page">
-
-      <!-- LEFT: Product jump list -->
-      <div class="var-sidebar">
-        <div class="var-sb-hd">
-          <div style="font-family:'Syne',sans-serif;font-size:13px;font-weight:700;margin-bottom:8px">🗂 Products</div>
-          <button class="btn btn-primary btn-sm" style="width:100%" onclick="openVarDrawer()">+ Add / Edit Variants</button>
+        <div id="var-attrs-container"></div>
+        <button class="btn btn-ghost btn-sm" onclick="addVarAttrRow()" style="margin-top:7px;width:100%">+ Add Variant Row</button>
+        <div style="margin-top:16px;display:flex;gap:8px">
+          <button class="btn btn-primary" style="flex:1" onclick="saveVariants()">💾 Save Variants</button>
+          <button class="btn btn-ghost" onclick="clearVarForm()">Clear</button>
         </div>
-        <div class="var-sb-body" id="var-index-list">
-          <div style="color:var(--muted);font-size:12px;padding:20px 8px;text-align:center">No products yet</div>
-        </div>
-      </div>
-
-      <!-- CENTRE: Cards with search/filter -->
-      <div class="var-main">
-        <div class="var-topbar">
-          <input class="var-search" id="var-search" placeholder="🔍  Search product or SKU…" oninput="renderVarCards()">
-          <button class="var-fchip on" id="vf-all" onclick="setVarFilter('all',this)">All</button>
-          <button class="var-fchip" id="vf-alerts" onclick="setVarFilter('alerts',this)">⚠ Low</button>
-          <button class="var-fchip danger" id="vf-out" onclick="setVarFilter('out',this)">🔴 Out</button>
-        </div>
-        <div id="var-cards-container">
-          <div style="color:var(--muted);font-size:13px;text-align:center;padding:70px 20px">
-            <div style="font-size:40px;margin-bottom:10px">🎨</div>
-            No variant products yet.<br>Click <strong style="color:var(--accent)">+ Add / Edit Variants</strong> to get started.
+        <div style="margin-top:18px;background:var(--surface2);border-radius:10px;padding:14px">
+          <div style="font-size:11px;color:var(--accent);font-weight:600;text-transform:uppercase;margin-bottom:9px">⚡ Quick Templates</div>
+          <div style="display:flex;gap:6px;flex-wrap:wrap">
+            <button class="btn btn-ghost btn-sm" onclick="applyTemplate('tshirt')">👕 T-Shirt Sizes</button>
+            <button class="btn btn-ghost btn-sm" onclick="applyTemplate('colors')">🌈 Basic Colors</button>
+            <button class="btn btn-ghost btn-sm" onclick="applyTemplate('shoes')">👟 Shoe Sizes</button>
+            <button class="btn btn-ghost btn-sm" onclick="applyTemplate('pack')">📦 Pack Sizes</button>
           </div>
         </div>
       </div>
-
-      <!-- RIGHT: Notification rail -->
-      <div class="var-notif-rail">
-        <div class="var-rail-hd">
-          <div style="display:flex;align-items:center;justify-content:space-between">
-            <div style="font-family:'Syne',sans-serif;font-size:13px;font-weight:700">🔔 Alerts</div>
-            <button onclick="clearDismissedNotifs()" title="Restore dismissed" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:18px;line-height:1;padding:0">↺</button>
-          </div>
-          <div style="font-size:11px;color:var(--muted);margin-top:3px" id="rail-subtitle">—</div>
-          <!-- Summary pills -->
-          <div style="display:flex;gap:5px;margin-top:8px" id="rail-pills"></div>
-        </div>
-        <div class="var-rail-body" id="var-notif-rail"></div>
+      <div class="var-list">
+        <div class="var-title">📦 Products with Variants</div>
+        <div id="var-cards-container"><div style="color:var(--muted);font-size:13px;text-align:center;padding:40px 20px">No variants yet.<br>Select a product and add variants.</div></div>
       </div>
     </div>
   </div>
@@ -1145,286 +972,6 @@ kbd{background:var(--surface2);border:1px solid var(--border);border-radius:4px;
   </div>
 </div>
 
-  <!-- ========== FINANCE IQ TAB ========== -->
-  <div id="tab-finance" class="hidden">
-
-    <div class="fi-save-bar">
-      <div style="font-family:'Syne',sans-serif;font-size:15px;font-weight:700">📈 Finance IQ — Business Intelligence Tracker</div>
-      <div style="display:flex;gap:8px;align-items:center">
-        <span id="fi-saved-text" style="font-size:11px;color:var(--muted)"></span>
-        <button class="btn btn-ghost btn-sm" onclick="fiClearAll()">↺ Reset</button>
-        <button class="btn btn-primary btn-sm" onclick="fiSaveAll()">💾 Save</button>
-      </div>
-    </div>
-
-    <div class="fi-tabs">
-      <button class="fi-tab active" onclick="fiSwitch('overview',this)">📊 Overview</button>
-      <button class="fi-tab" onclick="fiSwitch('balance',this)">⚖️ Balance Sheet</button>
-      <button class="fi-tab" onclick="fiSwitch('ratios',this)">📐 Ratios</button>
-      <button class="fi-tab" onclick="fiSwitch('cba',this)">💰 Cost–Benefit</button>
-      <button class="fi-tab" onclick="fiSwitch('revenue',this)">📈 Revenue</button>
-      <button class="fi-tab" onclick="fiSwitch('pricing',this)">🎯 Pricing Power</button>
-      <button class="fi-tab" onclick="fiSwitch('ltv',this)">♻️ LTV & AAC</button>
-      <button class="fi-tab" onclick="fiSwitch('overhead',this)">🏗️ Overhead</button>
-      <button class="fi-tab" onclick="fiSwitch('costs',this)">📦 Fixed vs Variable</button>
-    </div>
-
-    <!-- OVERVIEW -->
-    <div id="fi-overview" class="fi-section active">
-      <div class="fi-kpis" id="fi-kpis-row"></div>
-      <div class="fi-grid2">
-        <div class="fi-card">
-          <div class="fi-card-title">📋 Concept Reference</div>
-          <div class="fi-card-sub">Quick formulas & definitions</div>
-          <div id="fi-concept-list"></div>
-        </div>
-        <div class="fi-card">
-          <div class="fi-card-title">🩺 Health Indicators</div>
-          <div class="fi-card-sub">Based on your entered data</div>
-          <div id="fi-health-bars"></div>
-          <div id="fi-health-score" style="margin-top:14px"></div>
-        </div>
-      </div>
-    </div>
-
-    <!-- BALANCE SHEET -->
-    <div id="fi-balance" class="fi-section">
-      <div class="fi-grid2">
-        <div class="fi-card">
-          <div class="fi-card-title">🏦 Assets</div>
-          <div class="fi-card-sub">Everything your business owns</div>
-          <div class="fi-row3"><div><div class="fi-label">Name</div><input class="fi-input" id="fi-asset-name" placeholder="e.g. Cash"></div>
-            <div><div class="fi-label">Amount ₹</div><input class="fi-input" id="fi-asset-amt" type="number" placeholder="0"></div>
-            <div><div class="fi-label">Type</div><select class="fi-input" id="fi-asset-type"><option>Current</option><option>Fixed</option><option>Intangible</option></select></div></div>
-          <button class="btn btn-primary btn-sm" style="width:100%;margin-bottom:13px" onclick="fiAddEntry('asset')">+ Add Asset</button>
-          <table class="fi-bs-table"><thead><tr><th>Asset</th><th>Type</th><th>Amount</th><th></th></tr></thead><tbody id="fi-assets-body"></tbody>
-          <tfoot><tr class="fi-bs-total"><td colspan="2">Total Assets</td><td id="fi-total-assets">₹0</td><td></td></tr></tfoot></table>
-        </div>
-        <div class="fi-card">
-          <div class="fi-card-title">📋 Liabilities & Equity</div>
-          <div class="fi-card-sub">What you owe + owner's stake</div>
-          <div class="fi-row3"><div><div class="fi-label">Name</div><input class="fi-input" id="fi-liab-name" placeholder="e.g. Bank Loan"></div>
-            <div><div class="fi-label">Amount ₹</div><input class="fi-input" id="fi-liab-amt" type="number" placeholder="0"></div>
-            <div><div class="fi-label">Type</div><select class="fi-input" id="fi-liab-type"><option>Liability</option><option>Equity</option></select></div></div>
-          <button class="btn btn-primary btn-sm" style="width:100%;margin-bottom:13px" onclick="fiAddEntry('liab')">+ Add Liability / Equity</button>
-          <table class="fi-bs-table"><thead><tr><th>Item</th><th>Type</th><th>Amount</th><th></th></tr></thead><tbody id="fi-liabs-body"></tbody>
-          <tfoot><tr class="fi-bs-total"><td colspan="2">Total L + E</td><td id="fi-total-liabs">₹0</td><td></td></tr></tfoot></table>
-        </div>
-      </div>
-      <div class="fi-card" style="margin-top:13px">
-        <div class="fi-result-row">
-          <div class="fi-result-item"><div class="fi-result-lbl">Total Assets</div><div class="fi-result-val" id="fi-bs-a" style="color:var(--blue)">₹0</div></div>
-          <div style="display:flex;align-items:center;font-size:22px;color:var(--muted);padding:0 8px">=</div>
-          <div class="fi-result-item"><div class="fi-result-lbl">Liabilities + Equity</div><div class="fi-result-val" id="fi-bs-le" style="color:var(--accent)">₹0</div></div>
-          <div class="fi-result-item"><div class="fi-result-lbl">Balance Status</div><div id="fi-bs-status" style="margin-top:4px">—</div></div>
-        </div>
-      </div>
-    </div>
-
-    <!-- RATIOS -->
-    <div id="fi-ratios" class="fi-section">
-      <div class="fi-card" style="margin-bottom:14px">
-        <div class="fi-card-title">📐 Input Financial Figures</div>
-        <div class="fi-card-sub">Fill in your numbers — all 6 ratios calculate automatically</div>
-        <div class="fi-grid3">
-          <div><div class="fi-label">Net Profit ₹</div><input class="fi-input" id="fi-r-np" type="number" placeholder="0" oninput="fiCalcRatios()">
-            <div class="fi-label">Revenue ₹</div><input class="fi-input" id="fi-r-rev" type="number" placeholder="0" oninput="fiCalcRatios()">
-            <div class="fi-label">Total Assets ₹</div><input class="fi-input" id="fi-r-assets" type="number" placeholder="0" oninput="fiCalcRatios()"></div>
-          <div><div class="fi-label">Total Debt ₹</div><input class="fi-input" id="fi-r-debt" type="number" placeholder="0" oninput="fiCalcRatios()">
-            <div class="fi-label">Owner's Equity ₹</div><input class="fi-input" id="fi-r-equity" type="number" placeholder="0" oninput="fiCalcRatios()">
-            <div class="fi-label">Current Assets ₹</div><input class="fi-input" id="fi-r-ca" type="number" placeholder="0" oninput="fiCalcRatios()"></div>
-          <div><div class="fi-label">Current Liabilities ₹</div><input class="fi-input" id="fi-r-cl" type="number" placeholder="0" oninput="fiCalcRatios()">
-            <div class="fi-label">Inventory ₹</div><input class="fi-input" id="fi-r-inv" type="number" placeholder="0" oninput="fiCalcRatios()">
-            <div class="fi-label">COGS ₹</div><input class="fi-input" id="fi-r-cogs" type="number" placeholder="0" oninput="fiCalcRatios()"></div>
-        </div>
-      </div>
-      <div class="fi-grid3" id="fi-ratios-grid"></div>
-    </div>
-
-    <!-- COST-BENEFIT -->
-    <div id="fi-cba" class="fi-section">
-      <div class="fi-grid2" style="margin-bottom:14px">
-        <div class="fi-card">
-          <div class="fi-card-title">✅ Benefits</div>
-          <div class="fi-card-sub">Financial + non-financial gains</div>
-          <div class="fi-row"><div><div class="fi-label">Description</div><input class="fi-input" id="fi-ben-desc" placeholder="e.g. SSD upgrade"></div>
-            <div><div class="fi-label">Value ₹</div><input class="fi-input" id="fi-ben-val" type="number" placeholder="0"></div></div>
-          <div><div class="fi-label">Category</div><select class="fi-input" id="fi-ben-cat"><option>Financial</option><option>Time Saving</option><option>Productivity</option><option>Quality</option><option>Customer Satisfaction</option><option>Risk Reduction</option><option>Other</option></select></div>
-          <button class="btn btn-primary btn-sm" style="width:100%" onclick="fiAddCBA('benefit')">+ Add Benefit</button>
-          <div id="fi-benefits-list" style="margin-top:11px"></div>
-        </div>
-        <div class="fi-card">
-          <div class="fi-card-title">❌ Costs</div>
-          <div class="fi-card-sub">All costs including opportunity cost</div>
-          <div class="fi-row"><div><div class="fi-label">Description</div><input class="fi-input" id="fi-cost-desc" placeholder="e.g. Purchase price"></div>
-            <div><div class="fi-label">Amount ₹</div><input class="fi-input" id="fi-cost-val" type="number" placeholder="0"></div></div>
-          <div><div class="fi-label">Type</div><select class="fi-input" id="fi-cost-cat"><option>Direct Cost</option><option>Opportunity Cost</option><option>Time Cost</option><option>Ongoing Cost</option><option>Risk Cost</option><option>Other</option></select></div>
-          <button class="btn btn-primary btn-sm" style="width:100%" onclick="fiAddCBA('cost')">+ Add Cost</button>
-          <div id="fi-costs-list" style="margin-top:11px"></div>
-        </div>
-      </div>
-      <div class="fi-card">
-        <div class="fi-card-title">⚖️ Decision Analysis</div>
-        <div class="fi-result-row" id="fi-cba-result"></div>
-      </div>
-    </div>
-
-    <!-- REVENUE -->
-    <div id="fi-revenue" class="fi-section">
-      <div class="fi-card" style="margin-bottom:14px">
-        <div class="fi-card-title">📈 Revenue Growth Calculator</div>
-        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:10px">
-          <div><div class="fi-label">Current Customers</div><input class="fi-input" id="fi-rev-cust" type="number" placeholder="100" oninput="fiCalcRev()"></div>
-          <div><div class="fi-label">Avg Transaction ₹</div><input class="fi-input" id="fi-rev-txn" type="number" placeholder="500" oninput="fiCalcRev()"></div>
-          <div><div class="fi-label">Transactions / Year</div><input class="fi-input" id="fi-rev-freq" type="number" placeholder="4" oninput="fiCalcRev()"></div>
-          <div><div class="fi-label">Current Price ₹</div><input class="fi-input" id="fi-rev-price" type="number" placeholder="500" oninput="fiCalcRev()"></div>
-        </div>
-        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px">
-          <div><div class="fi-label" style="color:var(--accent)">↑ New Customers %</div><input class="fi-input" id="fi-rev-gcust" type="number" placeholder="10" oninput="fiCalcRev()"></div>
-          <div><div class="fi-label" style="color:var(--blue)">↑ Upsell %</div><input class="fi-input" id="fi-rev-upsell" type="number" placeholder="15" oninput="fiCalcRev()"></div>
-          <div><div class="fi-label" style="color:var(--warn)">↑ Frequency %</div><input class="fi-input" id="fi-rev-gfreq" type="number" placeholder="20" oninput="fiCalcRev()"></div>
-          <div><div class="fi-label" style="color:var(--danger)">↑ Price %</div><input class="fi-input" id="fi-rev-gprice" type="number" placeholder="5" oninput="fiCalcRev()"></div>
-        </div>
-      </div>
-      <div class="fi-grid2" style="margin-bottom:14px">
-        <div class="fi-card"><div class="fi-card-title">Current Revenue</div><div id="fi-rev-current" style="font-family:'Syne',sans-serif;font-size:26px;font-weight:700;color:var(--accent);margin-top:6px">₹0</div><div style="font-size:11px;color:var(--muted);margin-top:4px">Customers × Avg Txn × Frequency</div></div>
-        <div class="fi-card"><div class="fi-card-title">Projected Revenue</div><div id="fi-rev-projected" style="font-family:'Syne',sans-serif;font-size:26px;font-weight:700;color:var(--green);margin-top:6px">₹0</div><div id="fi-rev-uplift" style="font-size:11px;color:var(--muted);margin-top:4px">Fill in growth %s above</div></div>
-      </div>
-      <div class="fi-grid2" id="fi-levers-grid"></div>
-    </div>
-
-    <!-- PRICING POWER -->
-    <div id="fi-pricing" class="fi-section">
-      <div class="fi-grid2">
-        <div class="fi-card">
-          <div class="fi-card-title">🎯 Pricing Power Score</div>
-          <div class="fi-card-sub">Rate each driver 1–10 — Ability to raise prices without losing customers</div>
-          <div id="fi-pricing-sliders"></div>
-          <div class="fi-result" style="margin-top:14px">
-            <div class="fi-result-lbl">Overall Pricing Power</div>
-            <div id="fi-pp-score" class="fi-result-val" style="font-size:30px">0 / 10</div>
-            <div id="fi-pp-verdict" style="font-size:12px;color:var(--muted);margin-top:4px"></div>
-          </div>
-        </div>
-        <div class="fi-card">
-          <div class="fi-card-title">💰 Price Hike Simulator</div>
-          <div class="fi-card-sub">Pricing Power protects profit and offsets inflation</div>
-          <div><div class="fi-label">Current Price ₹</div><input class="fi-input" id="fi-ps-price" type="number" placeholder="500" oninput="fiCalcPS()"></div>
-          <div><div class="fi-label">Current Customers</div><input class="fi-input" id="fi-ps-cust" type="number" placeholder="100" oninput="fiCalcPS()"></div>
-          <div><div class="fi-label">Price Increase %</div><input class="fi-input" id="fi-ps-inc" type="number" placeholder="10" oninput="fiCalcPS()"></div>
-          <div><div class="fi-label">Expected Customer Loss %</div><input class="fi-input" id="fi-ps-loss" type="number" placeholder="5" oninput="fiCalcPS()"></div>
-          <div class="fi-result-row" id="fi-ps-result" style="margin-top:10px;flex-wrap:wrap;gap:10px"></div>
-        </div>
-      </div>
-    </div>
-
-    <!-- LTV & AAC -->
-    <div id="fi-ltv" class="fi-section">
-      <div class="fi-grid2">
-        <div class="fi-card">
-          <div class="fi-card-title">♻️ Lifetime Value (LTV)</div>
-          <div class="fi-card-sub">Total value a customer brings over the relationship. Subscriptions increase LTV.</div>
-          <div><div class="fi-label">Avg Purchase Value ₹</div><input class="fi-input" id="fi-ltv-avg" type="number" placeholder="500" oninput="fiCalcLTV()"></div>
-          <div><div class="fi-label">Purchases per Year</div><input class="fi-input" id="fi-ltv-freq" type="number" placeholder="4" oninput="fiCalcLTV()"></div>
-          <div><div class="fi-label">Avg Customer Lifespan (years)</div><input class="fi-input" id="fi-ltv-life" type="number" placeholder="3" oninput="fiCalcLTV()"></div>
-          <div><div class="fi-label">Gross Margin %</div><input class="fi-input" id="fi-ltv-margin" type="number" placeholder="40" oninput="fiCalcLTV()"></div>
-          <div class="fi-result"><div class="fi-result-row">
-            <div class="fi-result-item"><div class="fi-result-lbl">Gross LTV</div><div class="fi-result-val" id="fi-ltv-gross" style="color:var(--blue)">₹0</div></div>
-            <div class="fi-result-item"><div class="fi-result-lbl">Profit LTV</div><div class="fi-result-val" id="fi-ltv-profit" style="color:var(--accent)">₹0</div></div>
-          </div></div>
-        </div>
-        <div class="fi-card">
-          <div class="fi-card-title">🎯 Allowable Acquisition Cost (AAC)</div>
-          <div class="fi-card-sub">Max spend to acquire one customer profitably<br><span style="font-family:'DM Mono',monospace;font-size:10px;color:var(--muted)">AAC = (LTV – VCC – Fixed) × (1 – Margin%)</span></div>
-          <div><div class="fi-label">LTV ₹ (auto-filled from left)</div><input class="fi-input" id="fi-aac-ltv" type="number" placeholder="0" oninput="fiCalcAAC()"></div>
-          <div><div class="fi-label">Value Creation Cost ₹ / customer</div><input class="fi-input" id="fi-aac-vcc" type="number" placeholder="0" oninput="fiCalcAAC()"></div>
-          <div><div class="fi-label">Fixed Cost per Customer ₹</div><input class="fi-input" id="fi-aac-fixed" type="number" placeholder="0" oninput="fiCalcAAC()"></div>
-          <div><div class="fi-label">Desired Profit Margin %</div><input class="fi-input" id="fi-aac-margin" type="number" placeholder="30" oninput="fiCalcAAC()"></div>
-          <div class="fi-result">
-            <div class="fi-result-lbl">Max Allowable Acquisition Cost</div>
-            <div class="fi-result-val" id="fi-aac-result" style="color:var(--warn);font-size:26px">₹0</div>
-          </div>
-        </div>
-      </div>
-      <div class="fi-card" style="margin-top:13px">
-        <div class="fi-card-title">📊 LTV : CAC Ratio — Guides marketing spend</div>
-        <div class="fi-card-sub">3:1 = healthy · 5:1 = excellent · below 1:1 = losing money</div>
-        <div class="fi-row"><div><div class="fi-label">Actual CAC ₹ (what you spend to acquire a customer)</div><input class="fi-input" id="fi-cac" type="number" placeholder="0" oninput="fiCalcCAC()"></div><div></div></div>
-        <div id="fi-ltvcac-result"></div>
-      </div>
-    </div>
-
-    <!-- OVERHEAD -->
-    <div id="fi-overhead" class="fi-section">
-      <div class="fi-grid2">
-        <div class="fi-card">
-          <div class="fi-card-title">🏗️ Overhead Tracker</div>
-          <div class="fi-card-sub">Minimum ongoing costs. Lower overhead = easier profitability.</div>
-          <div class="fi-row">
-            <div><div class="fi-label">Item</div><input class="fi-input" id="fi-oh-name" placeholder="e.g. Office Rent"></div>
-            <div><div class="fi-label">Monthly ₹</div><input class="fi-input" id="fi-oh-amt" type="number" placeholder="0"></div>
-          </div>
-          <div class="fi-row">
-            <div><div class="fi-label">Category</div><select class="fi-input" id="fi-oh-cat"><option>Rent & Space</option><option>Salaries & HR</option><option>Utilities</option><option>Software & Tools</option><option>Marketing</option><option>Insurance</option><option>Other</option></select></div>
-            <div><div class="fi-label">Essential?</div><select class="fi-input" id="fi-oh-ess"><option>Yes — core</option><option>Yes — important</option><option>Possibly reducible</option><option>Could cut</option></select></div>
-          </div>
-          <button class="btn btn-primary btn-sm" style="width:100%;margin-bottom:13px" onclick="fiAddOH()">+ Add Overhead</button>
-          <div id="fi-oh-list"></div>
-        </div>
-        <div class="fi-card">
-          <div class="fi-card-title">📊 Burn Rate Analysis</div>
-          <div class="fi-card-sub">Track burn rate for sustainability</div>
-          <div class="fi-result" style="margin-bottom:12px"><div class="fi-result-row">
-            <div class="fi-result-item"><div class="fi-result-lbl">Monthly OH</div><div class="fi-result-val" id="fi-oh-monthly" style="color:var(--danger)">₹0</div></div>
-            <div class="fi-result-item"><div class="fi-result-lbl">Annual OH</div><div class="fi-result-val" id="fi-oh-annual" style="color:var(--danger)">₹0</div></div>
-          </div></div>
-          <div><div class="fi-label">Monthly Revenue ₹</div><input class="fi-input" id="fi-oh-rev" type="number" placeholder="0" oninput="fiCalcBurn()"></div>
-          <div><div class="fi-label">Cash on Hand ₹</div><input class="fi-input" id="fi-oh-cash" type="number" placeholder="0" oninput="fiCalcBurn()"></div>
-          <div id="fi-burn-result"></div>
-          <div id="fi-oh-breakdown" style="margin-top:14px"></div>
-        </div>
-      </div>
-    </div>
-
-    <!-- FIXED VS VARIABLE -->
-    <div id="fi-costs" class="fi-section">
-      <div class="fi-grid2">
-        <div class="fi-card">
-          <div class="fi-card-title">📦 Cost Tracker</div>
-          <div class="fi-card-sub">Fixed: Always incurred (rent, salaries) · Variable: Scale with production. Don't cut value-adding costs!</div>
-          <div class="fi-row">
-            <div><div class="fi-label">Cost Name</div><input class="fi-input" id="fi-fc-name" placeholder="e.g. Rent, Materials"></div>
-            <div><div class="fi-label">Monthly ₹</div><input class="fi-input" id="fi-fc-amt" type="number" placeholder="0"></div>
-          </div>
-          <div class="fi-row">
-            <div><div class="fi-label">Type</div><select class="fi-input" id="fi-fc-type"><option>Fixed</option><option>Variable</option><option>Semi-Variable</option></select></div>
-            <div><div class="fi-label">Adds Value?</div><select class="fi-input" id="fi-fc-val"><option>Yes — essential</option><option>Yes — adds value</option><option>Neutral</option><option>No — consider cutting</option></select></div>
-          </div>
-          <button class="btn btn-primary btn-sm" style="width:100%;margin-bottom:13px" onclick="fiAddCost()">+ Add Cost</button>
-          <table class="fi-costs-table"><thead><tr><th>Name</th><th>Type</th><th>Monthly</th><th>Value?</th><th></th></tr></thead><tbody id="fi-costs-body"></tbody></table>
-        </div>
-        <div class="fi-card">
-          <div class="fi-card-title">📊 Cost Structure + Breakeven</div>
-          <div class="fi-result" style="margin-bottom:12px"><div class="fi-result-row">
-            <div class="fi-result-item"><div class="fi-result-lbl">Fixed / mo</div><div class="fi-result-val" id="fi-fc-fixed" style="color:var(--blue)">₹0</div></div>
-            <div class="fi-result-item"><div class="fi-result-lbl">Variable / mo</div><div class="fi-result-val" id="fi-fc-var" style="color:var(--accent)">₹0</div></div>
-            <div class="fi-result-item"><div class="fi-result-lbl">Total / mo</div><div class="fi-result-val" id="fi-fc-total">₹0</div></div>
-          </div></div>
-          <div class="fi-row">
-            <div><div class="fi-label">Expected Monthly Units</div><input class="fi-input" id="fi-fc-units" type="number" placeholder="100" oninput="fiCalcBE()"></div>
-            <div><div class="fi-label">Revenue per Unit ₹</div><input class="fi-input" id="fi-fc-rpu" type="number" placeholder="500" oninput="fiCalcBE()"></div>
-          </div>
-          <div id="fi-be-result"></div>
-          <div style="margin-top:13px">
-            <div style="font-size:11px;font-weight:700;color:var(--warn);margin-bottom:6px">⚠️ Value-Destroying Costs (Incremental Degradation Risk)</div>
-            <div id="fi-value-destroy"></div>
-          </div>
-        </div>
-      </div>
-    </div>
-
-  </div><!-- end tab-finance -->
-
 <div class="modal-overlay" id="modal">
   <div class="modal">
     <div class="modal-title" id="modal-title">Add New Item</div>
@@ -1436,7 +983,7 @@ kbd{background:var(--surface2);border:1px solid var(--border);border-radius:4px;
         <div style="display:flex;gap:7px">
           <input class="form-input" id="f-barcode" placeholder="Scan or enter barcode" style="flex:1">
           <button class="btn btn-ghost btn-sm" onclick="toggleScanner()" style="white-space:nowrap; border-color: var(--accent); color: var(--accent);">📷 Scan</button>
-          <button class="btn btn-ghost btn-sm" onclick="document.getElementById('f-barcode').value=genEAN13()" style="white-space:nowrap">🔀 Auto</button>
+          <button class="btn btn-ghost btn-sm" onclick="document.getElementById('f-barcode').value='890'+Math.floor(Math.random()*10000000000).toString().padStart(10,'0')" style="white-space:nowrap">🔀 Auto</button>
         </div>
         <div id="reader" style="width: 100%; margin-top: 10px; display: none; border-radius: 8px; overflow: hidden; border: 1px solid var(--border);"></div>
       </div>
@@ -1580,31 +1127,6 @@ kbd{background:var(--surface2);border:1px solid var(--border);border-radius:4px;
 
 <script>
 /* ============================================================
-   EAN-13 BARCODE GENERATOR
-   ============================================================ */
-function genEAN13(){
-  // Indian GS1 prefix 890 + 9 random digits = 12 digits, then compute check digit
-  const prefix  = '890';
-  const rand    = Math.floor(Math.random() * 1000000000).toString().padStart(9, '0');
-  const first12 = prefix + rand;
-  return first12 + ean13Check(first12);
-}
-
-function ean13Check(first12){
-  // Step 1: sum even positions (index 1,3,5,7,9,11 — 2nd,4th... digits) × 3
-  let evenSum = 0;
-  for(let i = 1; i < 12; i += 2) evenSum += parseInt(first12[i]);
-  evenSum *= 3;
-  // Step 2: add odd positions (index 0,2,4,6,8,10 — 1st,3rd... digits)
-  let oddSum = 0;
-  for(let i = 0; i < 12; i += 2) oddSum += parseInt(first12[i]);
-  // Step 3: remainder
-  const remainder = (evenSum + oddSum) % 10;
-  // Step 4: if remainder != 0, subtract from 10
-  return remainder === 0 ? 0 : 10 - remainder;
-}
-
-/* ============================================================
    CONFIG & STATE
    ============================================================ */
 let SCRIPT_URL = localStorage.getItem('sf_sheet_url') || '';
@@ -1686,158 +1208,122 @@ let lastNotFoundBarcode = '';
 function processBarcodeScan(mode) {
   const inputEl = document.getElementById(mode+'-barcode-input');
   const qtyEl   = document.getElementById(mode+'-qty-input');
-  const raw     = inputEl.value.trim();
-  // Strip ALL non-alphanumeric chars so spaces/dashes/invisible chars never cause mismatch
-  const norm    = v => (v||'').replace(/[^a-z0-9]/gi,'').toLowerCase();
-  const barcode = norm(raw);
-  const qty     = parseInt(qtyEl.value) || 1;
+  const barcode  = inputEl.value.trim();
+  const qty      = parseInt(qtyEl.value) || 1;
 
   document.getElementById(mode+'-result-card').classList.remove('show');
   document.getElementById(mode+'-not-found').classList.remove('show');
   if(mode==='deduct') document.getElementById('deduct-warn').style.display='none';
 
-  if(!barcode){ toast('⚠️','Please enter or scan a barcode'); inputEl.focus(); return false; }
-  if(qty < 1){ toast('⚠️','Quantity must be at least 1'); return false; }
+  if(!barcode){ toast('⚠️','Please enter or scan a barcode'); inputEl.focus(); return; }
+  if(qty < 1){ toast('⚠️','Quantity must be at least 1'); return; }
 
-  // ── 1. Try variant first ──
-  let matchedVariant=null, matchedVarParent=null, matchedVarIdx=-1, matchedVarPid;
-  const varMatch = findVariantByBarcode(barcode);
-  if(varMatch){
-    matchedVarPid    = varMatch.pid;
-    matchedVarIdx    = varMatch.comboIdx;
-    matchedVariant   = varMatch.combo;
-    matchedVarParent = items.find(i=>i.id==varMatch.pid);
-  }
-
-  // ── 2. Match parent — 3 passes ──
-  let item = matchedVarParent;
-  if(!item){
-    // Pass 1: normalised barcode field exact match
-    item = items.find(i => norm(i.barcode) === barcode);
-    // Pass 2: normalised SKU exact match
-    if(!item) item = items.find(i => norm(i.sku) === barcode);
-    // Pass 3: partial contains (QR prefix wrapping, extra chars)
-    if(!item) item = items.find(i => {
-      const b = norm(i.barcode);
-      const s = norm(i.sku);
-      return (b && (b.includes(barcode) || barcode.includes(b))) ||
-             (s && (s.includes(barcode) || barcode.includes(s)));
+  // ── 1. Try matching a VARIANT first (by skuSuffix barcode or full SKU) ──
+  let matchedVariant = null, matchedVarParent = null, matchedVarIdx = -1;
+  for (const [pid, vData] of Object.entries(variants)) {
+    vData.attrs.forEach((attr, idx) => {
+      const varSku = (items.find(i=>i.id==pid)?.sku||'') + (attr.skuSuffix||'');
+      if (attr.barcode === barcode || varSku === barcode) {
+        matchedVariant   = attr;
+        matchedVarParent = items.find(i=>i.id==pid);
+        matchedVarIdx    = idx;
+        matchedVarPid    = pid;
+      }
     });
+    if(matchedVariant) break;
   }
 
-  // ── Not found — show debug info ──
+  // ── 2. Fallback: try matching a parent item ──
+  const item = matchedVarParent || items.find(i => (i.barcode && i.barcode === barcode) || i.sku === barcode);
+
   if(!item && !matchedVariant){
-    lastNotFoundBarcode = raw;
-    const stored = items.slice(0,5).map(i=>`${i.name}: "${i.barcode||''}"`).join(' | ');
+    lastNotFoundBarcode = barcode;
     document.getElementById(mode+'-not-found').classList.add('show');
-    document.getElementById(mode+'-not-found-code').innerHTML =
-      `Scanned: <strong>"${raw}"</strong> · Items loaded: ${items.length}<br>
-       <span style="font-size:10px;color:var(--muted)">First 5 barcodes: ${stored}</span>`;
-    toast('❌', `Not found: "${raw}" · ${items.length} items in memory`);
+    document.getElementById(mode+'-not-found-code').textContent = 'Scanned: ' + barcode;
+    toast('❌','Barcode not found in inventory');
     inputEl.value=''; inputEl.focus();
-    return false;
+    return;
   }
 
   // ── 3. Apply stock change ──
-  const before    = item.stock;
+  const before = item.stock;
+  let variantBefore = matchedVariant ? matchedVariant.stock : null;
+  let resultLabel = item.name;
   let variantNote = '';
-  const isAdd     = mode === 'add';
 
-  if(isAdd){
+  if (mode === 'add') {
     item.stock += qty;
-    if(matchedVariant){
+    if (matchedVariant) {
       matchedVariant.stock += qty;
-      variantNote = ` (${(matchedVariant.labels||[matchedVariant.value||'']).join('/')} +${qty})`;
+      variantNote = ` (${matchedVariant.value} variant +${qty})`;
     }
   } else {
-    if(qty > item.stock){
+    if (qty > item.stock) {
       document.getElementById('deduct-warn').style.display='block';
       document.getElementById('deduct-warn-msg').textContent = `Only ${item.stock} in stock, cannot deduct ${qty}.`;
       inputEl.value=''; inputEl.focus();
-      return false;
+      return;
     }
     item.stock -= qty;
-    if(matchedVariant){
-      matchedVariant.stock = Math.max(0, matchedVariant.stock - qty);
-      variantNote = ` (${(matchedVariant.labels||[matchedVariant.value||'']).join('/')} -${qty})`;
+    if (matchedVariant) {
+      const varStock = matchedVariant.stock;
+      matchedVariant.stock = Math.max(0, varStock - qty);
+      variantNote = ` (${matchedVariant.value} variant -${qty})`;
     }
   }
 
   const after = item.stock;
 
-  // ── 4. Update variant storage ──
-  if(matchedVariant && matchedVarPid !== undefined){
-    const vData    = variants[matchedVarPid];
-    const comboArr = vData.combos || vData.attrs;
-    comboArr[matchedVarIdx] = matchedVariant;
+  // ── 4. Update variant in variants object ──
+  if (matchedVariant && matchedVarPid !== undefined) {
+    variants[matchedVarPid].attrs[matchedVarIdx] = matchedVariant;
     localStorage.setItem('sf_variants', JSON.stringify(variants));
     renderVarCards();
   }
 
   // ── 5. Show result card ──
+  const isAdd = mode === 'add';
   document.getElementById(mode+'-result-name').textContent = item.name + variantNote;
-  document.getElementById(mode+'-result-sku').textContent  = item.sku + (item.barcode?' · '+item.barcode:'');
-  document.getElementById(mode+'-before').textContent      = before;
-  document.getElementById(mode+'-delta').textContent       = (isAdd?'+':'-')+qty;
-  document.getElementById(mode+'-after').textContent       = after;
+  document.getElementById(mode+'-result-sku').textContent  = item.sku + (item.barcode?' · '+item.barcode:'') + (matchedVariant?' → Variant: '+matchedVariant.value:'');
+  document.getElementById(mode+'-before').textContent = before;
+  document.getElementById(mode+'-delta').textContent  = (isAdd?'+':'-')+qty;
+  document.getElementById(mode+'-after').textContent  = after;
   if(!isAdd) document.getElementById('deduct-after').style.color = after <= item.reorderPoint ? 'var(--danger)' : 'var(--accent)';
   document.getElementById(mode+'-result-card').classList.add('show');
 
-  // ── 6. Low/out warning on deduct ──
+  // ── 6. Low/out stock warning ──
   if(!isAdd){
     if(after === 0){
       document.getElementById('deduct-warn').style.display='block';
       document.getElementById('deduct-warn-msg').textContent = `${item.name} is now OUT OF STOCK!`;
     } else if(after <= item.reorderPoint){
       document.getElementById('deduct-warn').style.display='block';
-      document.getElementById('deduct-warn-msg').textContent = `${item.name} is low — ${after} left (reorder at ${item.reorderPoint})`;
+      document.getElementById('deduct-warn-msg').textContent = `${item.name} is now low (${after} left, reorder point: ${item.reorderPoint})`;
     }
   }
 
-  // ── 7. Log + sync ──
+  // ── 7. Build scan log entry ──
   const scanLog = {
-    timestamp: new Date().toISOString(), mode,
-    name: item.name+(matchedVariant?' ['+matchedVariant.value+']':''),
-    sku: item.sku, barcode: raw, qty, before, after,
-    variantValue: matchedVariant?(matchedVariant.labels||[matchedVariant.value||'']).join(' / '):'',
-    parentSku: item.sku
+    timestamp : new Date().toISOString(),
+    mode,
+    name     : item.name + (matchedVariant?' ['+matchedVariant.value+']':''),
+    sku      : item.sku + (matchedVariant?matchedVariant.skuSuffix:''),
+    barcode  : barcode,
+    qty,
+    before,
+    after,
+    variantValue : matchedVariant ? matchedVariant.value : '',
+    parentSku    : item.sku
   };
 
   addToScanHistory(mode, item, qty, before, after, matchedVariant);
-  const verb = isAdd ? 'Added to' : 'Removed from';
-  toast(isAdd?'✅':'📤', `${verb} ${item.name}${variantNote}: ${before} → ${after}`);
+  toast('✅', `${isAdd?'+':'-'}${qty}${variantNote} → ${item.name} stock: ${after}`);
 
   inputEl.value = '';
-  qtyEl.value   = 1;
+  qtyEl.value = 1;
   inputEl.focus();
   render();
   syncToSheet(scanLog);
-  return true;
-}
-
-function showBarcodeDebug(){
-  const norm    = v => (v||'').replace(/[^a-z0-9]/gi,'').toLowerCase();
-  const scanned = document.getElementById('add-barcode-input').value.trim();
-  const nc      = norm(scanned);
-
-  let out = `ITEMS IN MEMORY: ${items.length}\n`;
-  out    += `Scanned: "${scanned}"\nNormalised: "${nc}"\n\n`;
-
-  if(items.length === 0){
-    out += `⚠️ NO ITEMS LOADED — click Sync Now`;
-  } else {
-    items.forEach((i,n) => {
-      const nb  = norm(i.barcode||'');
-      const ns  = norm(i.sku||'');
-      const hit = nb===nc || ns===nc || (nb&&(nb.includes(nc)||nc.includes(nb)));
-      out += `${n+1}. ${i.name}\n   BC:"${i.barcode||'EMPTY'}" NS:"${i.sku||''}"\n   ${hit?'✅ MATCH':'❌'}\n`;
-    });
-  }
-
-  // Show inline — no alert needed
-  let panel = document.getElementById('add-debug-panel');
-  panel.textContent = out;
-  panel.style.cssText = 'display:block;background:#050a0f;border:2px solid #ffd166;border-radius:9px;padding:14px;margin-top:10px;font-family:monospace;font-size:11px;color:#ffd166;max-height:50vh;overflow-y:scroll;white-space:pre;word-break:break-all;z-index:999;position:relative';
 }
 
 function addToScanHistory(mode, item, qty, before, after, variant=null){
@@ -1879,7 +1365,6 @@ function toggleScanCamera(mode){
   const readerEl = document.getElementById(readerId);
   let scanner = mode==='add' ? addCamScanner : deductCamScanner;
 
-  // If already open — close it
   if(scanner){
     scanner.clear().catch(()=>{});
     if(mode==='add') addCamScanner=null; else deductCamScanner=null;
@@ -1888,28 +1373,17 @@ function toggleScanCamera(mode){
   }
 
   readerEl.style.display='block';
-
   const newScanner = new Html5QrcodeScanner(readerId,
-    {fps:15, qrbox:{width:300, height:120}, supportedScanTypes:[Html5QrcodeScanType.SCAN_TYPE_CAMERA]}, false);
+    {fps:10, qrbox:{width:280, height:110}, supportedScanTypes:[Html5QrcodeScanType.SCAN_TYPE_CAMERA]}, false);
 
   newScanner.render((decodedText)=>{
-    // Clean scanned value
-    const cleaned = decodedText.replace(/\s+/g,'').trim();
-
-    // Stop camera immediately
+    document.getElementById(mode+'-barcode-input').value = decodedText;
+    new Audio('data:audio/mp3;base64,//NExAAAAANIAAAAAExBTUUzLjEwMKqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq/9jDAAAABzOEAAAAAABzhAAAB//OAAAA//OAAAA//OAAAA//OAAAA//OAAAA//OAAAA//OAAAA').play().catch(()=>{});
     newScanner.clear().catch(()=>{});
-    if(mode==='add') addCamScanner=null; else deductCamScanner=null;
     readerEl.style.display='none';
-
-    // Put value into input and process
-    document.getElementById(mode+'-barcode-input').value = cleaned;
-    const success = processBarcodeScan(mode);
-
-    // Reopen camera after 2s whether success or not — user keeps scanning
-    setTimeout(()=>{
-      if(document.getElementById(mode+'-barcode-input')) toggleScanCamera(mode);
-    }, success ? 2000 : 2500);
-
+    if(mode==='add') addCamScanner=null; else deductCamScanner=null;
+    toast('📷','Barcode scanned!');
+    setTimeout(()=>processBarcodeScan(mode), 300);
   }, ()=>{});
 
   if(mode==='add') addCamScanner=newScanner; else deductCamScanner=newScanner;
@@ -1974,13 +1448,7 @@ async function loadFromSheet() {
   }
 }
 
-let syncInFlight = false;
-let syncQueued = false;
-let pendingScanLogs = [];
-
 async function syncToSheet(scanLog=null) {
-  if (scanLog) pendingScanLogs.push(scanLog);
-
   localStorage.setItem('sf_v3', JSON.stringify(items));
   localStorage.setItem('sf_sup_v3', JSON.stringify(suppliers));
   localStorage.setItem('sf_variants', JSON.stringify(variants));
@@ -1989,32 +1457,21 @@ async function syncToSheet(scanLog=null) {
 
   if (!SCRIPT_URL || !isConnected) return;
 
-  // If a sync is already in flight, just flag that another is needed once
-  // it finishes — never let two POSTs race each other to the sheet.
-  if (syncInFlight) { syncQueued = true; return; }
-  syncInFlight = true;
-
-  do {
-    syncQueued = false;
-    const logsToSend = pendingScanLogs.splice(0, pendingScanLogs.length);
-    try {
-      setSyncState('syncing', 'Syncing to cloud...');
-      const payload = { items, suppliers, variants, recipes, iterations };
-      if (logsToSend.length) payload.scanLogs = logsToSend;
-      await fetch(SCRIPT_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-        body: JSON.stringify(payload)
-      });
-      updateLastSync();
-      setSyncState('connected', 'Connected');
-    } catch(e) {
-      setSyncState('error', 'Sync failed! Saved locally.');
-      console.error('Sync error:', e);
-    }
-  } while (syncQueued); // pick up anything queued while we were mid-flight
-
-  syncInFlight = false;
+  try {
+    setSyncState('syncing', 'Syncing to cloud...');
+    const payload = { items, suppliers, variants, recipes, iterations };
+    if (scanLog) payload.scanLog = scanLog;
+    await fetch(SCRIPT_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify(payload)
+    });
+    updateLastSync();
+    setSyncState('connected', 'Connected');
+  } catch(e) {
+    setSyncState('error', 'Sync failed! Saved locally.');
+    console.error('Sync error:', e);
+  }
 }
 
 async function syncAll() {
@@ -2055,7 +1512,7 @@ function updateLastSync() {
 
 function showLoading(t) { document.getElementById('loading-text').textContent=t; document.getElementById('loading').classList.add('show'); }
 function hideLoading() { document.getElementById('loading').classList.remove('show'); }
-function toast(icon,msg){const el=document.getElementById('toast');document.getElementById('toast-icon').textContent=icon;document.getElementById('toast-msg').textContent=msg;el.classList.add('show');setTimeout(()=>el.classList.remove('show'),4000)}
+function toast(icon,msg){const el=document.getElementById('toast');document.getElementById('toast-icon').textContent=icon;document.getElementById('toast-msg').textContent=msg;el.classList.add('show');setTimeout(()=>el.classList.remove('show'),3000)}
 
 /* ============================================================
    RENDER CORE
@@ -2186,7 +1643,7 @@ async function deleteSupplier(id){if(!confirm('Delete supplier?'))return;supplie
    ============================================================ */
 function switchTab(tab,btn){
   document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active')); btn.classList.add('active');
-  ['inventory','addstock','deductstock','monitor','variants','charts','suppliers','mva','production','iteration','alerts','gst','finance'].forEach(t=>{
+  ['inventory','addstock','deductstock','monitor','variants','charts','suppliers','mva','production','iteration','alerts','gst'].forEach(t=>{
     const el=document.getElementById('tab-'+t); if(el) el.classList.toggle('hidden',t!==tab);
   });
   if(tab==='charts')setTimeout(renderCharts,60);
@@ -2197,7 +1654,6 @@ function switchTab(tab,btn){
   if(tab==='variants'){populateVarProductSelect();renderVarCards();}
   if(tab==='production'){populateProdSelects();renderRecipes();}
   if(tab==='iteration'){populateIterSelects();renderIterations();renderIterSummary();}
-  if(tab==='finance'){renderFinanceOverview();}
 }
 function showSheetsSetup(){document.getElementById('sheet-url-modal').value=SCRIPT_URL; document.getElementById('sheets-modal').classList.add('open');}
 function closeSheetsModal(){document.getElementById('sheets-modal').classList.remove('open');}
@@ -2392,422 +1848,209 @@ function runMonitorAlgo(){
   toast('🔄','Monitor algorithm ran — results updated!');
 }
 
-
-
 /* ============================================================
-   PRODUCT VARIANTS  — Multi-Attribute Matrix System
+   PRODUCT VARIANTS
    ============================================================ */
-let variants    = JSON.parse(localStorage.getItem('sf_variants')||'{}');
-let varAxes     = [];
-let pendingMatrix = {pid:null, rows:[]};
-let varFilter   = 'all';
-let dismissedNotifs = new Set(JSON.parse(localStorage.getItem('sf_notif_dismissed')||'[]'));
+let variants = JSON.parse(localStorage.getItem('sf_variants')||'{}');
+// variants = { itemId: { type, label, attrs:[{value,skuSuffix,stock,color}] } }
+let currentVarType = 'color';
 
-// ── Drawer open/close ──────────────────────────────────────
-function openVarDrawer(pid){
-  document.getElementById('var-drawer').classList.add('open');
-  document.getElementById('var-scrim').classList.add('show');
-  populateVarProductSelect();
-  if(pid){ document.getElementById('var-drawer-title').textContent='Edit Variants'; editVariant(pid); }
-  else     document.getElementById('var-drawer-title').textContent='Add Variants';
-}
-function closeVarDrawer(){
-  document.getElementById('var-drawer').classList.remove('open');
-  document.getElementById('var-scrim').classList.remove('show');
+function setVarType(type, btn){
+  currentVarType = type;
+  document.querySelectorAll('.var-type-btn').forEach(b=>{ b.style.borderColor=''; b.style.color=''; });
+  btn.style.borderColor='var(--accent)'; btn.style.color='var(--accent)';
+  document.getElementById('var-custom-label-wrap').style.display = type==='custom'?'block':'none';
 }
 
-// ── Filter ────────────────────────────────────────────────
-function setVarFilter(f, btn){
-  varFilter = f;
-  document.querySelectorAll('.var-fchip').forEach(b=>b.classList.remove('on'));
-  if(btn) btn.classList.add('on');
-  renderVarCards();
+function populateVarProductSelect(){
+  const sel = document.getElementById('var-product-sel');
+  const cur = sel.value;
+  sel.innerHTML='<option value="">— Select a product —</option>'+
+    items.map(i=>`<option value="${i.id}" ${variants[i.id]?'':''}>${i.name} (${i.sku})${variants[i.id]?' ✓':''}</option>`).join('');
+  sel.value = cur;
 }
 
-// ── Dismiss notifications ─────────────────────────────────
-function dismissNotif(key){
-  dismissedNotifs.add(key);
-  localStorage.setItem('sf_notif_dismissed', JSON.stringify([...dismissedNotifs]));
-  const el = document.getElementById('vn-'+key);
-  if(el){ el.classList.add('gone'); setTimeout(renderNotifRail, 250); }
-}
-function clearDismissedNotifs(){
-  dismissedNotifs.clear();
-  localStorage.setItem('sf_notif_dismissed','[]');
-  renderNotifRail();
-}
-
-// ── Notification rail ─────────────────────────────────────
-function renderNotifRail(){
-  const rail  = document.getElementById('var-notif-rail');
-  const sub   = document.getElementById('rail-subtitle');
-  const pills = document.getElementById('rail-pills');
-  if(!rail) return;
-
-  const all    = getAllVariantAlerts();
-  const active = all.filter(a=>!dismissedNotifs.has(a.pid+'|'+a.idx));
-  const outN   = active.filter(a=>a.status==='out').length;
-  const lowN   = active.filter(a=>a.status==='low').length;
-  const dimN   = dismissedNotifs.size;
-
-  if(sub) sub.textContent = active.length
-    ? `${outN?outN+' out of stock · ':''}${lowN?lowN+' running low':''}`
-    : dimN ? `All clear — ${dimN} dismissed` : 'All stocks healthy ✅';
-
-  if(pills) pills.innerHTML = [
-    outN ? `<span style="background:color-mix(in srgb,var(--danger) 18%,transparent);color:var(--danger);border-radius:99px;padding:2px 9px;font-size:10px;font-weight:700">${outN} OUT</span>` : '',
-    lowN ? `<span style="background:color-mix(in srgb,var(--warn) 18%,transparent);color:var(--warn);border-radius:99px;padding:2px 9px;font-size:10px;font-weight:700">${lowN} LOW</span>` : '',
-    dimN ? `<span style="background:var(--surface2);color:var(--muted);border-radius:99px;padding:2px 9px;font-size:10px">${dimN} hidden</span>` : ''
-  ].join('');
-
-  if(!active.length){
-    rail.innerHTML=`<div style="text-align:center;padding:30px 12px;color:var(--muted);font-size:12px">
-      <div style="font-size:28px;margin-bottom:8px">✅</div>
-      <div>All variant stocks healthy!</div>
-      ${dimN?`<button onclick="clearDismissedNotifs()" style="margin-top:10px;background:none;border:1px solid var(--border);border-radius:6px;color:var(--muted);cursor:pointer;font-size:11px;padding:4px 12px">Restore ${dimN} dismissed</button>`:''}
-    </div>`;
-    return;
-  }
-
-  // Sort: out first
-  active.sort((a,b)=>(b.status==='out')-(a.status==='out'));
-
-  rail.innerHTML = active.map(({pid,idx,item,attr,status})=>{
-    const key   = pid+'|'+idx;
-    const isOut = status==='out';
-    const rpt   = attr.reorderPoint??5;
-    const combo = attr.labels ? attr.labels.join(' / ') : (attr.value||'');
-    return`<div class="var-notif ${isOut?'nout':'nlow'}" id="vn-${key}">
-      <button class="var-notif-x" onclick="event.stopPropagation();dismissNotif('${key}')" title="Dismiss">✕</button>
-      <div style="font-size:10px;color:var(--muted);margin-bottom:2px">${item.name}</div>
-      <div style="font-size:13px;font-weight:700;color:${isOut?'var(--danger)':'var(--warn)'};margin-bottom:2px">${combo}</div>
-      ${attr.sku?`<div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);margin-bottom:4px">${attr.sku}</div>`:''}
-      <div style="font-size:12px;color:${isOut?'var(--danger)':'var(--warn)'}">
-        ${isOut ? '🔴 Out of stock' : `🟡 ${attr.stock} left  ·  min ${rpt}`}
-      </div>
-      <div style="display:flex;gap:6px;margin-top:8px">
-        <button onclick="event.stopPropagation();variantAdjustStock(${pid},${idx},${rpt})" 
-          style="flex:1;padding:5px 0;background:color-mix(in srgb,var(--accent) 14%,transparent);border:1px solid var(--accent);border-radius:6px;color:var(--accent);cursor:pointer;font-size:11px;font-weight:700">
-          +${rpt} Restock
-        </button>
-        <button onclick="event.stopPropagation();openVarDrawer(${pid})"
-          style="padding:5px 10px;background:var(--surface2);border:1px solid var(--border);border-radius:6px;color:var(--muted);cursor:pointer;font-size:11px">
-          Edit
-        </button>
-        <button onclick="event.stopPropagation();jumpToCard(${pid})"
-          style="padding:5px 8px;background:var(--surface2);border:1px solid var(--border);border-radius:6px;color:var(--muted);cursor:pointer;font-size:11px" title="Jump to card">
-          ↗
-        </button>
-      </div>
-    </div>`;
-  }).join('');
+function addVarAttrRow(val='', skuSuffix='', stock=0, color='#00e5a0', barcode='', reorderPt=5){
+  const container = document.getElementById('var-attrs-container');
+  const row = document.createElement('div');
+  row.className='var-attr-row';
+  const isColor = currentVarType==='color';
+  row.style.gridTemplateColumns = isColor ? '1.2fr 0.8fr 0.9fr 60px 60px 36px 36px' : '1.2fr 0.8fr 0.9fr 60px 60px 36px';
+  row.innerHTML=`
+    <input class="var-attr-input" placeholder="${currentVarType==='size'?'e.g. S, M, L':currentVarType==='color'?'e.g. Red, Blue':'Value'}" value="${val}">
+    <input class="var-attr-input" placeholder="-RED" value="${skuSuffix}">
+    <input class="var-attr-input" placeholder="Barcode / EAN" value="${barcode}">
+    <input class="var-attr-input" type="number" min="0" placeholder="Stock" value="${stock}" style="text-align:center" title="Current stock">
+    <input class="var-attr-input" type="number" min="0" placeholder="Min" value="${reorderPt}" style="text-align:center;border-color:var(--warn)" title="Low stock alert below this quantity">
+    ${isColor?`<input type="color" class="color-dot-input" value="${color}" title="Pick color">`:''}
+    <button class="var-del-btn" onclick="this.closest('.var-attr-row').remove()">✕</button>
+  `;
+  container.appendChild(row);
 }
 
-// ── Sidebar index ──────────────────────────────────────────
-function renderVarIndex(){
-  const el = document.getElementById('var-index-list');
-  if(!el) return;
-  const keys = Object.keys(variants);
-  if(!keys.length){ el.innerHTML='<div style="color:var(--muted);font-size:12px;padding:20px 8px;text-align:center">No products yet</div>'; return; }
-  const allAlerts = getAllVariantAlerts();
-  el.innerHTML = keys.map(pid=>{
-    const item=items.find(i=>i.id==pid); if(!item) return '';
-    const combos=(variants[pid].combos||[]);
-    const pa=allAlerts.filter(a=>a.pid==pid);
-    const outN=pa.filter(a=>a.status==='out').length;
-    const lowN=pa.filter(a=>a.status==='low').length;
-    const dotC=outN?'var(--danger)':lowN?'var(--warn)':'var(--accent)';
-    const badge=outN?`<span style="margin-left:auto;background:color-mix(in srgb,var(--danger) 20%,transparent);color:var(--danger);border-radius:99px;padding:1px 7px;font-size:10px;font-weight:700">${outN}</span>`
-      :lowN?`<span style="margin-left:auto;background:color-mix(in srgb,var(--warn) 20%,transparent);color:var(--warn);border-radius:99px;padding:1px 7px;font-size:10px;font-weight:700">${lowN}</span>`:'';
-    return`<div class="var-idx-item" id="idx-${pid}" onclick="jumpToCard(${pid})">
-      <span class="var-idx-dot" style="background:${dotC}"></span>
-      <div style="flex:1;min-width:0">
-        <div style="font-size:12px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${item.name}</div>
-        <div style="font-size:10px;color:var(--muted)">${combos.length} combos</div>
-      </div>
-      ${badge}
-    </div>`;
-  }).join('');
-}
-
-function jumpToCard(pid){
-  const card = document.getElementById('vcard-'+pid);
-  if(card){ card.scrollIntoView({behavior:'smooth',block:'start'}); }
-  document.querySelectorAll('.var-idx-item').forEach(x=>x.classList.remove('active'));
-  const idx = document.getElementById('idx-'+pid);
-  if(idx) idx.classList.add('active');
-}
-
-// ── Axis builder ──────────────────────────────────────────
-function addVarAxis(name='', values=[], isColor=false){
-  const id='ax'+Date.now();
-  varAxes.push({id,name,values,isColor});
-  renderAxes();
-}
-function removeVarAxis(id){ varAxes=varAxes.filter(a=>a.id!==id); renderAxes(); }
-function addAxisValue(id, label, color='#00e5a0'){
-  const ax=varAxes.find(a=>a.id===id); if(!ax||!label.trim()) return;
-  if(ax.values.find(v=>v.label.toLowerCase()===label.trim().toLowerCase())){ toast('⚠️','Already exists'); return; }
-  ax.values.push({label:label.trim(),color}); renderAxes();
-}
-function removeAxisValue(id,i){ const ax=varAxes.find(a=>a.id===id); if(ax){ax.values.splice(i,1);renderAxes();} }
-function addAxisValueFromInput(id){
-  const inp=document.getElementById('inp-'+id), col=document.getElementById('col-'+id);
-  if(!inp||!inp.value.trim()) return;
-  addAxisValue(id,inp.value.trim(),col?col.value:'#00e5a0'); inp.value='';
-}
-
-function renderAxes(){
-  const c=document.getElementById('var-axes-container'); if(!c) return;
-  c.innerHTML=varAxes.map(ax=>{
-    const tags=ax.values.map((v,i)=>`
-      <span class="var-axis-tag" style="${ax.isColor?`border-color:${v.color};background:${v.color}22`:''}">
-        ${ax.isColor?`<span style="width:8px;height:8px;border-radius:50%;background:${v.color};border:1px solid rgba(255,255,255,.2);flex-shrink:0"></span>`:''}
-        ${v.label}<button class="var-axis-tagx" onclick="removeAxisValue('${ax.id}',${i})">×</button>
-      </span>`).join('');
-    return`<div class="var-axis" id="${ax.id}">
-      <div style="display:flex;align-items:center;gap:7px;margin-bottom:9px">
-        <input class="var-axis-name-inp" value="${ax.name}" placeholder="Attribute name (e.g. Color)"
-          oninput="varAxes.find(a=>a.id==='${ax.id}').name=this.value">
-        <label style="display:flex;align-items:center;gap:4px;font-size:11px;color:var(--muted);cursor:pointer;white-space:nowrap">
-          <input type="checkbox" ${ax.isColor?'checked':''} onchange="varAxes.find(a=>a.id==='${ax.id}').isColor=this.checked;renderAxes()"> Colours
-        </label>
-        <button onclick="removeVarAxis('${ax.id}')" style="background:none;border:1px solid var(--border);border-radius:6px;color:var(--danger);cursor:pointer;padding:4px 7px;font-size:12px;flex-shrink:0">✕</button>
-      </div>
-      <div style="display:flex;flex-wrap:wrap;gap:4px;min-height:24px;margin-bottom:8px">${tags||'<span style="color:var(--muted);font-size:11px;padding:3px 0">No values — type below</span>'}</div>
-      <div style="display:flex;gap:6px">
-        <input class="var-axis-valinp" id="inp-${ax.id}" placeholder="Value, then Enter"
-          onkeydown="if(event.key==='Enter'){event.preventDefault();addAxisValueFromInput('${ax.id}')}">
-        ${ax.isColor?`<input type="color" class="var-axis-colinp" id="col-${ax.id}" value="#00e5a0">`:''}
-        <button class="btn btn-ghost btn-sm" onclick="addAxisValueFromInput('${ax.id}')" style="font-size:12px;flex-shrink:0">Add</button>
-      </div>
-    </div>`;
-  }).join('');
-}
-
-// ── Presets ────────────────────────────────────────────────
-function applyPreset(preset){
-  varAxes=[];
-  const P={
-    bandana:[
-      {name:'Color',isColor:true,values:[{label:'Red',color:'#ff4757'},{label:'Blue',color:'#5eb8ff'},{label:'Pink',color:'#ff6b9d'},{label:'Yellow',color:'#ffd166'},{label:'Green',color:'#34a853'},{label:'Purple',color:'#c084fc'}]},
-      {name:'Size',isColor:false,values:[{label:'XS'},{label:'S'},{label:'M'},{label:'L'},{label:'XL'}]}
-    ],
-    tshirt:[
-      {name:'Color',isColor:true,values:[{label:'White',color:'#e8edf5'},{label:'Black',color:'#1a1a2e'},{label:'Navy',color:'#2d3a6b'},{label:'Red',color:'#ff4757'}]},
-      {name:'Size',isColor:false,values:[{label:'XS'},{label:'S'},{label:'M'},{label:'L'},{label:'XL'},{label:'XXL'}]}
-    ],
-    shoes:[
-      {name:'Color',isColor:true,values:[{label:'Black',color:'#1a1a2e'},{label:'White',color:'#e8edf5'},{label:'Brown',color:'#8B4513'}]},
-      {name:'Size',isColor:false,values:[{label:'6'},{label:'7'},{label:'8'},{label:'9'},{label:'10'},{label:'11'}]}
-    ],
-    colorsonly:[{name:'Color',isColor:true,values:[{label:'Red',color:'#ff4757'},{label:'Blue',color:'#5eb8ff'},{label:'Green',color:'#34a853'},{label:'Black',color:'#1a1a2e'},{label:'White',color:'#e8edf5'},{label:'Yellow',color:'#ffd166'}]}],
-    sizesonly:[{name:'Size',isColor:false,values:[{label:'XS'},{label:'S'},{label:'M'},{label:'L'},{label:'XL'},{label:'XXL'}]}]
-  };
-  (P[preset]||[]).forEach(a=>varAxes.push({id:'ax'+Date.now()+Math.random().toString(36).slice(2,5),name:a.name,values:a.values,isColor:a.isColor}));
-  renderAxes();
-  toast('✅','Preset loaded — click Generate!');
-}
-
-// ── Cartesian product ──────────────────────────────────────
-function cartesian(axes){
-  if(!axes.length) return [[]];
-  const [first,...rest]=axes; const rc=cartesian(rest);
-  return first.values.flatMap(v=>rc.map(c=>[v,...c]));
-}
-
-// ── Generate matrix ────────────────────────────────────────
-function generateMatrix(){
-  const pid=document.getElementById('var-product-sel').value;
-  if(!pid){toast('⚠️','Select a product first');return;}
-  if(!varAxes.length){toast('⚠️','Add at least one attribute');return;}
-  if(varAxes.some(a=>!a.values.length)){toast('⚠️','Each attribute needs at least one value');return;}
-
-  const item=items.find(i=>i.id==pid);
-  const dStock   =parseInt(document.getElementById('var-default-stock').value)||0;
-  const dReorder =parseInt(document.getElementById('var-default-reorder').value)||5;
-  const dCost    =parseFloat(document.getElementById('var-default-cost').value)||0;
-  const dPrice   =parseFloat(document.getElementById('var-default-price').value)||(item?item.price:0);
-  const parentSku=item?item.sku:'';
-  const existing =(variants[pid]?variants[pid].combos:[]);
-  const exMap={};
-  existing.forEach(c=>{exMap[c.key]=c;});
-
-  const rows=cartesian(varAxes).map(combo=>{
-    const key=combo.map(v=>v.label).join('|');
-    const labels=combo.map(v=>v.label);
-    const skuSuffix='-'+labels.map(l=>l.toUpperCase().replace(/\s+/g,'')).join('-');
-    const colorVal=combo.find((_,i)=>varAxes[i].isColor);
-    const ex=exMap[key];
-    return{key,labels,sku:parentSku+skuSuffix,barcode:ex?ex.barcode||'':'',stock:ex?ex.stock:dStock,reorderPoint:ex?ex.reorderPoint:dReorder,cost:ex?(ex.cost??dCost):dCost,sellPrice:ex?(ex.sellPrice??dPrice):dPrice,color:colorVal?colorVal.color:'#00e5a0'};
-  });
-
-  renderMatrixEditor(pid,rows);
-  document.getElementById('var-matrix-editor').style.display='block';
-}
-
-function renderMatrixEditor(pid,rows){
-  pendingMatrix={pid,rows};
-  const item=items.find(i=>i.id==pid);
-  document.getElementById('matrix-editor-title').textContent=(item?item.name:'Product')+' — '+rows.length+' combinations';
-  document.getElementById('matrix-editor-sub').textContent=varAxes.map(a=>a.name).join(' × ')+' · set stock, cost & sell price per row';
-
-  const axNames=varAxes.map(a=>a.name);
-  const thead=`<thead><tr>
-    ${axNames.map(n=>`<th class="mx-th">${n}</th>`).join('')}
-    <th class="mx-th">SKU</th><th class="mx-th">Barcode</th>
-    <th class="mx-th">Stock</th><th class="mx-th" style="color:var(--warn)">Min⚠</th>
-    <th class="mx-th" style="color:var(--blue)">Cost₹</th><th class="mx-th" style="color:var(--accent)">Sell₹</th>
-    <th class="mx-th" style="color:var(--green)">Margin</th>
-  </tr></thead>`;
-
-  const tbody='<tbody>'+rows.map((row,rIdx)=>{
-    const margin=row.sellPrice>0?Math.round((row.sellPrice-row.cost)/row.sellPrice*100):0;
-    const mc=margin>=40?'var(--accent)':margin>=20?'var(--warn)':'var(--danger)';
-    const lblCells=row.labels.map((lbl,i)=>{
-      const ax=varAxes[i]||{}; const av=(ax.values||[]).find(v=>v.label===lbl)||{};
-      return`<td class="mx-td"><div style="display:flex;align-items:center;gap:5px">
-        ${ax.isColor?`<span style="width:8px;height:8px;border-radius:50%;background:${av.color||'#888'};border:1px solid rgba(255,255,255,.2);flex-shrink:0"></span>`:''}
-        <span style="font-size:12px">${lbl}</span></div></td>`;
-    }).join('');
-    return`<tr id="mrow-${rIdx}">
-      ${lblCells}
-      <td class="mx-td"><span class="mx-sku">${row.sku}</span></td>
-      <td class="mx-td"><input class="mx-barinp" data-r="${rIdx}" data-f="barcode" value="${row.barcode}" placeholder="EAN"></td>
-      <td class="mx-td"><input class="mx-inp" data-r="${rIdx}" data-f="stock" type="number" min="0" value="${row.stock}"></td>
-      <td class="mx-td"><input class="mx-inp" data-r="${rIdx}" data-f="reorderPoint" type="number" min="0" value="${row.reorderPoint}" style="border-color:var(--warn)"></td>
-      <td class="mx-td"><input class="mx-inp" data-r="${rIdx}" data-f="cost" type="number" min="0" step="0.01" value="${row.cost}" style="width:65px;border-color:var(--blue)"></td>
-      <td class="mx-td"><input class="mx-inp" data-r="${rIdx}" data-f="sellPrice" type="number" min="0" step="0.01" value="${row.sellPrice}" style="width:65px;border-color:var(--accent)"></td>
-      <td class="mx-td" id="mg-${rIdx}" style="text-align:center;font-family:'DM Mono',monospace;font-size:12px;font-weight:700;color:${mc}">${margin}%</td>
-    </tr>`;
-  }).join('')+'</tbody>';
-
-  document.getElementById('matrix-table').innerHTML=thead+tbody;
-  document.querySelectorAll('#matrix-table input[data-r]').forEach(inp=>{
-    inp.addEventListener('input',()=>{
-      const r=parseInt(inp.dataset.r), f=inp.dataset.f;
-      pendingMatrix.rows[r][f]=f==='barcode'?inp.value:(parseFloat(inp.value)||0);
-      if(f==='cost'||f==='sellPrice'){
-        const row=pendingMatrix.rows[r];
-        const m=row.sellPrice>0?Math.round((row.sellPrice-row.cost)/row.sellPrice*100):0;
-        const mc=m>=40?'var(--accent)':m>=20?'var(--warn)':'var(--danger)';
-        const mg=document.getElementById('mg-'+r);
-        if(mg){mg.textContent=m+'%';mg.style.color=mc;}
-      }
-    });
-  });
-}
-
-// ── Save ───────────────────────────────────────────────────
 function saveVariants(){
-  const{pid,rows}=pendingMatrix;
-  if(!pid||!rows.length){toast('⚠️','Generate combinations first');return;}
-  variants[pid]={axes:varAxes.map(a=>({name:a.name,isColor:a.isColor,values:a.values})),combos:rows};
-  const parent=items.find(i=>i.id==pid);
-  if(parent){
-    parent.stock=rows.reduce((s,r)=>s+r.stock,0);
-    const tw=rows.reduce((s,r)=>s+(r.stock||1),0);
-    const ws=rows.reduce((s,r)=>s+(r.sellPrice??0)*(r.stock||1),0);
-    if(tw>0&&ws>0) parent.price=parseFloat((ws/tw).toFixed(2));
+  const pid = document.getElementById('var-product-sel').value;
+  if(!pid){ toast('⚠️','Select a product first'); return; }
+  const rows = document.querySelectorAll('#var-attrs-container .var-attr-row');
+  if(!rows.length){ toast('⚠️','Add at least one variant row'); return; }
+  const label = currentVarType==='custom'
+    ? (document.getElementById('var-custom-label').value||'Variant')
+    : currentVarType;
+  const attrs=[];
+  rows.forEach(row=>{
+    const inputs = row.querySelectorAll('input');
+    const val       = inputs[0].value.trim();
+    const sfx       = inputs[1].value.trim();
+    const bc        = inputs[2].value.trim();
+    const stk       = parseInt(inputs[3].value)||0;
+    const rpt       = parseInt(inputs[4].value)||5;
+    const col       = inputs[5]&&inputs[5].type==='color' ? inputs[5].value : '#00e5a0';
+    if(val) attrs.push({value:val, skuSuffix:sfx, barcode:bc, stock:stk, reorderPoint:rpt, color:col});
+  });
+  if(!attrs.length){ toast('⚠️','Enter at least one variant value'); return; }
+
+  variants[pid] = {type:currentVarType, label, attrs};
+
+  // Also update parent item total stock = sum of all variant stocks
+  const parentItem = items.find(i=>i.id==pid);
+  if(parentItem){
+    parentItem.stock = attrs.reduce((s,a)=>s+a.stock, 0);
   }
-  localStorage.setItem('sf_variants',JSON.stringify(variants));
-  closeVarDrawer();
+
+  localStorage.setItem('sf_variants', JSON.stringify(variants));
   renderVarCards();
   populateVarProductSelect();
   render();
-  syncToSheet();
-  toast('✅',rows.length+' combinations saved!');
-}
-
-// ── Populate product select ────────────────────────────────
-function populateVarProductSelect(){
-  const sel=document.getElementById('var-product-sel'); if(!sel) return;
-  const cur=sel.value;
-  sel.innerHTML='<option value="">— Select a product —</option>'+
-    items.map(i=>`<option value="${i.id}">${i.name} (${i.sku})${variants[i.id]?' ✓':''}</option>`).join('');
-  sel.value=cur;
-  sel.onchange=()=>{if(variants[sel.value]) editVariant(sel.value);};
+  syncToSheet(); // ← Save to Google Sheet
+  toast('✅','Variants saved & synced to sheet!');
 }
 
 function clearVarForm(){
-  const sel=document.getElementById('var-product-sel'); if(sel) sel.value='';
-  varAxes=[]; renderAxes(); pendingMatrix={pid:null,rows:[]};
-  document.getElementById('var-matrix-editor').style.display='none';
+  document.getElementById('var-product-sel').value='';
+  document.getElementById('var-attrs-container').innerHTML='';
+  addVarAttrRow(); addVarAttrRow(); addVarAttrRow();
+}
+
+function applyTemplate(tpl){
+  document.getElementById('var-attrs-container').innerHTML='';
+  const templates={
+    tshirt:[['XS','-XS','',0,'#5eb8ff'],['S','-S','',0,'#00e5a0'],['M','-M','',0,'#ffd166'],['L','-L','',0,'#ff6b35'],['XL','-XL','',0,'#ff4757'],['XXL','-XXL','',0,'#c084fc']],
+    colors:[['Red','-RED','',0,'#ff4757'],['Blue','-BLU','',0,'#5eb8ff'],['Green','-GRN','',0,'#34a853'],['Black','-BLK','',0,'#222'],['White','-WHT','',0,'#e8edf5'],['Yellow','-YLW','',0,'#ffd166']],
+    shoes:[['6','-6','',0,'#5eb8ff'],['7','-7','',0,'#5eb8ff'],['8','-8','',0,'#00e5a0'],['9','-9','',0,'#00e5a0'],['10','-10','',0,'#ffd166'],['11','-11','',0,'#ff6b35']],
+    pack:[['Single','-S1','',0,'#00e5a0'],['Pack of 3','-P3','',0,'#5eb8ff'],['Pack of 6','-P6','',0,'#ffd166'],['Pack of 12','-P12','',0,'#ff6b35'],['Bulk 50','-B50','',0,'#c084fc']]
+  };
+  const rows=templates[tpl]||[];
+  if(tpl==='tshirt'||tpl==='shoes') setVarType('size',document.querySelector('[data-type="size"]'));
+  else if(tpl==='colors') setVarType('color',document.querySelector('[data-type="color"]'));
+  else { setVarType('custom',document.querySelector('[data-type="custom"]')); }
+  rows.forEach(([v,s,b,st,c])=>addVarAttrRow(v,s,st,c,b));
 }
 
 function editVariant(pid){
-  const v=variants[pid]; if(!v) return;
-  const sel=document.getElementById('var-product-sel'); if(sel) sel.value=pid;
-  varAxes=(v.axes||[]).map(a=>({id:'ax'+Date.now()+Math.random().toString(36).slice(2,5),name:a.name,isColor:a.isColor,values:a.values}));
-  renderAxes();
-  generateMatrix();
+  document.getElementById('var-product-sel').value=pid;
+  const v=variants[pid];
+  if(!v) return;
+  const btn = document.querySelector(`[data-type="${v.type}"]`) || document.querySelector('.var-type-btn');
+  setVarType(v.type, btn);
+  if(v.type==='custom'){
+    document.getElementById('var-custom-label-wrap').style.display='block';
+    document.getElementById('var-custom-label').value=v.label;
+  }
+  document.getElementById('var-attrs-container').innerHTML='';
+  v.attrs.forEach(a=>addVarAttrRow(a.value, a.skuSuffix||'', a.stock, a.color||'#00e5a0', a.barcode||'', a.reorderPoint||5));
 }
 
-// ── Stock adjust ───────────────────────────────────────────
-function variantAdjustStock(pid,comboIdx,delta){
+// Inline +/- stock update directly on variant card
+function variantAdjustStock(pid, attrIdx, delta){
   if(!variants[pid]) return;
-  const combo=variants[pid].combos[comboIdx]; if(!combo) return;
-  const old=combo.stock;
-  combo.stock=Math.max(0,combo.stock+delta);
-  const parent=items.find(i=>i.id==pid);
-  if(parent){
-    const combos=variants[pid].combos;
-    parent.stock=combos.reduce((s,c)=>s+c.stock,0);
-    const tw=combos.reduce((s,c)=>s+(c.stock||1),0);
-    const ws=combos.reduce((s,c)=>s+((c.sellPrice??0)*(c.stock||1)),0);
-    if(tw>0&&ws>0) parent.price=parseFloat((ws/tw).toFixed(2));
+  const attr = variants[pid].attrs[attrIdx];
+  if(!attr) return;
+  const newStock = Math.max(0, attr.stock + delta);
+  const oldStock = attr.stock;
+  attr.stock = newStock;
+
+  // Update parent item stock = sum of all variant stocks
+  const parentItem = items.find(i=>i.id==pid);
+  if(parentItem){
+    const oldParentStock = parentItem.stock;
+    parentItem.stock = variants[pid].attrs.reduce((s,a)=>s+a.stock, 0);
   }
-  localStorage.setItem('sf_variants',JSON.stringify(variants));
-  const scanLog={timestamp:new Date().toISOString(),mode:delta>0?'add':'deduct',name:(parent?.name||'')+'['+combo.labels.join('/')+']',sku:combo.sku,barcode:combo.barcode||'',qty:Math.abs(delta),before:old,after:combo.stock,variantValue:combo.labels.join('/'),parentSku:parent?.sku||''};
+
+  localStorage.setItem('sf_variants', JSON.stringify(variants));
+
+  const mode   = delta > 0 ? 'add' : 'deduct';
+  const absQty = Math.abs(delta);
+  const scanLog = {
+    timestamp    : new Date().toISOString(),
+    mode,
+    name         : (parentItem?.name||'') + ' ['+attr.value+']',
+    sku          : (parentItem?.sku||'') + (attr.skuSuffix||''),
+    barcode      : attr.barcode||'',
+    qty          : absQty,
+    before       : oldStock,
+    after        : newStock,
+    variantValue : attr.value,
+    parentSku    : parentItem?.sku||''
+  };
+
   renderVarCards();
   render();
   syncToSheet(scanLog);
-  toast(delta>0?'✅':'📤',combo.labels.join('/')+': '+old+'→'+combo.stock);
+  toast(delta>0?'✅':'📤', `${attr.value}: ${oldStock} → ${newStock}`);
 }
 
-function variantQuickSet(pid,idx){
-  const combo=variants[pid]?.combos[idx]; if(!combo) return;
-  const v=prompt(`Exact stock for "${combo.labels.join('/')}":`,combo.stock);
-  if(v===null) return;
-  const n=parseInt(v);
-  if(isNaN(n)||n<0){toast('⚠️','Invalid');return;}
-  const d=n-combo.stock; if(d!==0) variantAdjustStock(pid,idx,d);
+function getVarStatus(attr){
+  if(attr.stock===0) return 'out';
+  const rpt = attr.reorderPoint ?? 5;
+  if(attr.stock <= rpt) return 'low';
+  return 'ok';
 }
 
-// ── Status helpers ─────────────────────────────────────────
-function getVarStatus(c){ if(c.stock===0) return 'out'; if(c.stock<=(c.reorderPoint??5)) return 'low'; return 'ok'; }
 function getAllVariantAlerts(){
-  const a=[];
-  for(const [pid,vData] of Object.entries(variants)){
-    const item=items.find(i=>i.id==pid); if(!item) continue;
-    (vData.combos||vData.attrs||[]).forEach((c,idx)=>{
-      const st=getVarStatus(c); if(st!=='ok') a.push({pid,idx,item,attr:c,status:st});
+  const alerts=[];
+  for(const [pid, vData] of Object.entries(variants)){
+    const item = items.find(i=>i.id==pid);
+    if(!item) continue;
+    vData.attrs.forEach((attr,idx)=>{
+      const st = getVarStatus(attr);
+      if(st !== 'ok') alerts.push({pid, idx, item, attr, status:st});
     });
   }
-  return a;
+  return alerts;
 }
 
-// ── Render alerts tab ──────────────────────────────────────
 function renderAlerts(){
+  // Parent alerts
   const al=items.filter(i=>getStatus(i)!=='ok').sort((a,b)=>getStatus(a)==='out'?-1:1);
   const el=document.getElementById('alerts-content');
   if(!al.length){el.innerHTML='<div style="color:var(--muted);font-size:13px">🎉 All parent items well stocked!</div>';}
   else{el.innerHTML=al.map(i=>{const c=getStatus(i)==='out';return`<div class="alert-item ${c?'alert-crit':'alert-warn'}"><span>${c?'🔴':'🟡'}</span><div class="alert-text"><strong>${i.name}</strong> (${i.sku}) — ${c?'OUT OF STOCK':'Low: '+i.stock+' left (reorder pt: '+i.reorderPoint+')'}</div><span class="alert-action" onclick="openModal(${i.id})">Restock →</span></div>`}).join('');}
-  const va=getAllVariantAlerts();
-  const vel=document.getElementById('var-alerts-content');
-  const badge=document.getElementById('var-alert-badge');
+
+  // Variant alerts
+  const varAlerts = getAllVariantAlerts();
+  const vel = document.getElementById('var-alerts-content');
+  const badge = document.getElementById('var-alert-badge');
   if(vel){
-    if(!va.length){vel.innerHTML='<div style="color:var(--muted);font-size:13px">🎉 All variants well stocked!</div>';if(badge)badge.style.display='none';}
-    else{
-      if(badge){badge.textContent=va.length;badge.style.display='inline';}
-      vel.innerHTML=va.map(({pid,idx,item,attr,status})=>{
-        const isOut=status==='out'; const rpt=attr.reorderPoint??5;
-        const name=attr.labels?attr.labels.join(' / '):(attr.value||'');
-        return`<div class="alert-item ${isOut?'alert-crit':'alert-warn'}" style="margin-bottom:8px">
+    if(!varAlerts.length){
+      vel.innerHTML='<div style="color:var(--muted);font-size:13px">🎉 All variants well stocked!</div>';
+      if(badge){ badge.style.display='none'; }
+    } else {
+      if(badge){ badge.textContent=varAlerts.length; badge.style.display='inline'; }
+      vel.innerHTML = varAlerts.map(({pid,idx,item,attr,status})=>{
+        const isOut = status==='out';
+        const rpt = attr.reorderPoint ?? 5;
+        return `<div class="alert-item ${isOut?'alert-crit':'alert-warn'}" style="margin-bottom:8px">
           <span>${isOut?'🔴':'🟡'}</span>
-          <div class="alert-text"><strong>${item.name}</strong> › <span style="color:${isOut?'var(--danger)':'var(--warn)'};font-weight:600">${name}</span><br>
-          ${isOut?`<span style="color:var(--danger);font-weight:700">OUT OF STOCK</span>`:`<span style="color:var(--warn)">Only <strong>${attr.stock}</strong> left (alert ≤${rpt})</span>`}</div>
-          <span class="alert-action" onclick="openVarDrawer(${pid});switchTab('variants',document.querySelectorAll('.tab')[4])">Edit →</span>
+          <div class="alert-text">
+            <strong>${item.name}</strong> — <span style="color:var(--accent)">${attr.value}</span>
+            ${attr.skuSuffix?`<span style="font-family:'DM Mono',monospace;font-size:10px;color:var(--muted)"> (${item.sku}${attr.skuSuffix})</span>`:''}
+            <br>
+            ${isOut
+              ? `<span style="color:var(--danger);font-weight:600">OUT OF STOCK</span>`
+              : `<span style="color:var(--warn)">Low: <strong>${attr.stock}</strong> left — alert set at ≤${rpt}</span>`
+            }
+          </div>
+          <span class="alert-action" onclick="editVariant(${pid});switchTab('variants',document.querySelectorAll('.tab')[4])">Restock →</span>
         </div>`;
       }).join('');
     }
@@ -2815,168 +2058,206 @@ function renderAlerts(){
 }
 
 function updateAlertCount(){
-  const total=items.filter(i=>getStatus(i)!=='ok').length+getAllVariantAlerts().length;
-  const el=document.getElementById('alert-count');
-  el.textContent=total>0?total:''; el.style.display=total>0?'':'none';
+  const parentN = items.filter(i=>getStatus(i)!=='ok').length;
+  const varN    = getAllVariantAlerts().length;
+  const total   = parentN + varN;
+  const el = document.getElementById('alert-count');
+  el.textContent = total > 0 ? total : '';
+  el.style.display = total > 0 ? '' : 'none';
 }
 
-// ── Main render ────────────────────────────────────────────
 function renderVarCards(){
-  const container=document.getElementById('var-cards-container'); if(!container) return;
-  const search=(document.getElementById('var-search')?.value||'').toLowerCase();
-  const allAlerts=getAllVariantAlerts();
-
-  let keys=Object.keys(variants);
-  // Apply filter
-  if(varFilter==='alerts') keys=keys.filter(pid=>allAlerts.some(a=>a.pid==pid));
-  if(varFilter==='out')    keys=keys.filter(pid=>allAlerts.some(a=>a.pid==pid&&a.status==='out'));
-  // Apply search
-  if(search) keys=keys.filter(pid=>{
-    const item=items.find(i=>i.id==pid); if(!item) return false;
-    return item.name.toLowerCase().includes(search)||item.sku.toLowerCase().includes(search);
-  });
-
+  const container=document.getElementById('var-cards-container');
+  if(!container) return;
+  const keys=Object.keys(variants);
   if(!keys.length){
-    const isEmpty=!Object.keys(variants).length;
-    container.innerHTML=`<div style="color:var(--muted);font-size:13px;text-align:center;padding:60px 20px">
-      <div style="font-size:36px;margin-bottom:10px">${isEmpty?'🎨':'🔍'}</div>
-      ${isEmpty?'No variant products yet.<br>Click <strong style="color:var(--accent)">+ Add / Edit Variants</strong>':'No products match filter.'}
-    </div>`;
-    renderVarIndex(); renderNotifRail(); updateAlertCount(); return;
+    container.innerHTML='<div style="color:var(--muted);font-size:13px;text-align:center;padding:40px 20px">No variants yet.<br>Select a product and add variants.</div>';
+    return;
   }
 
-  container.innerHTML=keys.map(pid=>{
-    const item=items.find(i=>i.id==pid); if(!item) return '';
-    const v=variants[pid]; const combos=v.combos||v.attrs||[]; const axes=v.axes||[];
-    const totalStock   =combos.reduce((s,c)=>s+c.stock,0);
-    const totalCostVal =combos.reduce((s,c)=>s+(c.cost??0)*c.stock,0);
-    const totalSellVal =combos.reduce((s,c)=>s+(c.sellPrice??0)*c.stock,0);
-    const avgMargin    =totalSellVal>0?Math.round((totalSellVal-totalCostVal)/totalSellVal*100):null;
-    const pa           =allAlerts.filter(a=>a.pid==pid);
-    const hasOut       =pa.some(a=>a.status==='out');
-    const cardClass    =hasOut?'critical':pa.length?'alerted':'';
-    const parentSC     =getStatus(item)==='out'?'var(--danger)':getStatus(item)==='low'?'var(--warn)':'var(--accent)';
-    const is2D         =axes.length===2;
-    let comboHtml      ='';
+  // Collect all variant alerts for the notification panel at top
+  const allAlerts = getAllVariantAlerts();
 
-    if(is2D){
-      const ax0=axes[0],ax1=axes[1];
-      const a0vals=ax0.values.map(v=>v.label), a1vals=ax1.values.map(v=>v.label);
-      comboHtml=`<div style="overflow-x:auto"><table style="border-collapse:collapse;font-size:12px;width:100%">
-        <thead><tr>
-          <th style="padding:6px 9px;background:var(--surface2);border:1px solid var(--border);font-size:10px;color:var(--muted);white-space:nowrap">${ax0.name} ↓ / ${ax1.name} →</th>
-          ${a1vals.map(l=>`<th style="padding:6px 9px;background:var(--surface2);border:1px solid var(--border);font-size:11px;font-weight:600;white-space:nowrap">${l}</th>`).join('')}
-        </tr></thead><tbody>`;
-      a0vals.forEach((a0,a0i)=>{
-        const a0v=ax0.values[a0i];
-        comboHtml+=`<tr><td style="padding:6px 9px;border:1px solid var(--border);font-weight:600;background:var(--surface2);white-space:nowrap">
-          ${ax0.isColor?`<span style="width:8px;height:8px;border-radius:50%;background:${a0v.color};border:1px solid rgba(255,255,255,.2);display:inline-block;margin-right:5px"></span>`:''} ${a0}</td>`;
-        a1vals.forEach(a1=>{
-          const key=a0+'|'+a1, cIdx=combos.findIndex(c=>c.key===key);
-          if(cIdx===-1){comboHtml+=`<td style="padding:6px;border:1px solid var(--border);text-align:center;color:var(--muted)">—</td>`;return;}
-          const c=combos[cIdx], st=getVarStatus(c);
-          const sc=st==='out'?'var(--danger)':st==='low'?'var(--warn)':'var(--accent)';
-          const m=c.sellPrice>0?Math.round((c.sellPrice-(c.cost??0))/c.sellPrice*100):null;
-          const mc=m===null?'var(--muted)':m>=40?'var(--accent)':m>=20?'var(--warn)':'var(--danger)';
-          comboHtml+=`<td style="padding:5px 7px;border:1px solid var(--border);text-align:center;background:${st!=='ok'?'color-mix(in srgb,'+sc+' 9%,transparent)':''}">
-            <div style="font-family:'DM Mono',monospace;font-size:14px;font-weight:700;color:${sc}">${c.stock}</div>
-            <div style="font-size:9px;color:var(--muted)">min ${c.reorderPoint??5}</div>
-            ${c.sellPrice>0?`<div style="font-size:9px;margin-top:1px"><span style="color:var(--blue)">₹${(c.cost??0).toFixed(0)}</span><span style="color:var(--muted)">→</span><span style="color:var(--accent)">₹${c.sellPrice.toFixed(0)}</span></div>`:''}
-            ${m!==null?`<div style="font-size:9px;color:${mc};font-weight:700">${m}%</div>`:''}
-            <div style="display:flex;gap:2px;margin-top:4px;justify-content:center">
-              <button onclick="variantAdjustStock(${pid},${cIdx},-1)" style="width:22px;height:22px;background:color-mix(in srgb,var(--danger) 15%,transparent);border:1px solid var(--danger);color:var(--danger);border-radius:4px;cursor:pointer;font-size:13px;padding:0;font-weight:700">−</button>
-              <button onclick="variantQuickSet(${pid},${cIdx})" style="width:22px;height:22px;background:var(--surface2);border:1px solid var(--border);color:var(--muted);border-radius:4px;cursor:pointer;font-size:10px;padding:0">✏</button>
-              <button onclick="variantAdjustStock(${pid},${cIdx},1)" style="width:22px;height:22px;background:color-mix(in srgb,var(--green) 15%,transparent);border:1px solid var(--green);color:var(--green);border-radius:4px;cursor:pointer;font-size:13px;padding:0;font-weight:700">+</button>
-            </div>
-          </td>`;
-        });
-        comboHtml+=`</tr>`;
-      });
-      comboHtml+=`</tbody></table></div>`;
-    } else {
-      comboHtml='<div class="var-grid">'+combos.map((c,cIdx)=>{
-        const st=getVarStatus(c), sc=st==='out'?'var(--danger)':st==='low'?'var(--warn)':'var(--accent)';
-        const barPct=Math.min(100,c.stock/Math.max(c.stock,(c.reorderPoint??5)*3)*100);
-        const m=c.sellPrice>0?Math.round((c.sellPrice-(c.cost??0))/c.sellPrice*100):null;
-        const mc=m===null?'var(--muted)':m>=40?'var(--accent)':m>=20?'var(--warn)':'var(--danger)';
-        return`<div class="var-chip" style="background:${c.color+'18'};border-color:${st!=='ok'?sc:c.color};${st!=='ok'?'box-shadow:0 0 8px '+sc+'33':''}">
-          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:3px">
-            <div style="display:flex;align-items:center;gap:4px">
-              ${c.color&&c.color!=='#00e5a0'?`<span class="var-chip-color" style="background:${c.color}"></span>`:''}
-              <strong style="font-size:12px">${c.labels?c.labels.join('/'):(c.value||'')}</strong>
-            </div>
-            <span style="font-size:11px">${st==='out'?'🔴':st==='low'?'🟡':'🟢'}</span>
-          </div>
-          <div style="font-size:10px;color:var(--muted);font-family:'DM Mono',monospace;margin-bottom:2px">${c.sku||''}</div>
-          <div class="var-chip-bar"><div class="var-chip-bar-fill" style="width:${barPct}%;background:${sc}"></div></div>
-          <div style="color:${sc};font-size:15px;font-weight:700;margin:5px 0">${c.stock} <span style="font-size:10px;font-weight:400;color:var(--muted)">units</span></div>
-          ${(c.cost??0)>0||c.sellPrice>0?`<div style="display:flex;justify-content:space-between;background:var(--surface2);border-radius:5px;padding:4px 7px;margin:4px 0;font-size:10px">
-            <div style="text-align:center"><div style="color:var(--muted);font-size:9px">Cost</div><div style="color:var(--blue);font-family:'DM Mono',monospace;font-weight:600">₹${(c.cost??0).toFixed(0)}</div></div>
-            <div style="text-align:center"><div style="color:var(--muted);font-size:9px">Sell</div><div style="color:var(--accent);font-family:'DM Mono',monospace;font-weight:600">₹${(c.sellPrice??0).toFixed(0)}</div></div>
-            ${m!==null?`<div style="text-align:center"><div style="color:var(--muted);font-size:9px">Margin</div><div style="color:${mc};font-family:'DM Mono',monospace;font-weight:700">${m}%</div></div>`:''}
-          </div>`:''}
-          <div class="var-reorder-badge" style="${st!=='ok'?'border-color:'+sc+';color:'+sc:''}">⚠ Min: ${c.reorderPoint??5}</div>
-          <div style="display:flex;gap:4px;margin-top:6px">
-            <button onclick="variantAdjustStock(${pid},${cIdx},-1)" style="flex:1;background:color-mix(in srgb,var(--danger) 15%,transparent);border:1px solid var(--danger);color:var(--danger);border-radius:5px;cursor:pointer;font-size:14px;padding:3px 0;font-weight:700">−</button>
-            <button onclick="variantQuickSet(${pid},${cIdx})" style="flex:0;background:var(--surface2);border:1px solid var(--border);color:var(--muted);border-radius:5px;cursor:pointer;font-size:10px;padding:3px 7px">✏</button>
-            <button onclick="variantAdjustStock(${pid},${cIdx},1)" style="flex:1;background:color-mix(in srgb,var(--green) 15%,transparent);border:1px solid var(--green);color:var(--green);border-radius:5px;cursor:pointer;font-size:14px;padding:3px 0;font-weight:700">+</button>
-          </div>
-          <div class="var-chip-status" style="background:${sc}"></div>
-        </div>`;
-      }).join('')+'</div>';
-    }
+  let html = '';
 
-    return`<div class="var-card ${cardClass}" id="vcard-${pid}">
-      <div class="var-card-hd">
+  // Global variant notification panel
+  if(allAlerts.length){
+    html += `<div class="var-notif-panel">
+      <div class="var-notif-panel-title">
+        🔔 Variant Stock Alerts
+        <span style="background:var(--danger);color:#fff;border-radius:99px;padding:1px 9px;font-size:11px">${allAlerts.length}</span>
+      </div>`;
+    allAlerts.forEach(({pid,idx,item,attr,status})=>{
+      const isOut = status==='out';
+      const rpt   = attr.reorderPoint ?? 5;
+      html += `<div class="var-notif-banner ${isOut?'var-notif-out':'var-notif-low'}">
+        <div class="var-notif-icon">${isOut?'🔴':'🟡'}</div>
+        <div class="var-notif-text">
+          <strong>${item.name}</strong> › <span style="font-weight:600;color:${isOut?'var(--danger)':'var(--warn)'}">${attr.value}</span>
+          ${attr.skuSuffix?`<span style="font-family:'DM Mono',monospace;font-size:10px;color:var(--muted)"> ${item.sku}${attr.skuSuffix}</span>`:''}
+          &nbsp;—&nbsp;
+          ${isOut
+            ? `<span style="color:var(--danger);font-weight:700">OUT OF STOCK</span>`
+            : `<span style="color:var(--warn)">Only <strong>${attr.stock}</strong> left (alert below ≤${rpt})</span>`}
+        </div>
+        <span class="var-notif-restock" onclick="variantAdjustStock(${pid},${idx},${rpt*2||10})">+Restock</span>
+      </div>`;
+    });
+    html += `</div>`;
+  } else {
+    html += `<div style="background:color-mix(in srgb,var(--accent) 8%,transparent);border:1px solid color-mix(in srgb,var(--accent) 25%,transparent);border-radius:10px;padding:11px 16px;margin-bottom:14px;font-size:12px;color:var(--accent)">✅ All variant stocks are healthy</div>`;
+  }
+
+  // Variant product cards
+  html += keys.map(pid=>{
+    const item=items.find(i=>i.id==pid);
+    if(!item) return '';
+    const v=variants[pid];
+    const totalStock=v.attrs.reduce((s,a)=>s+a.stock,0);
+    const totalVal=totalStock*item.price;
+    const productAlerts = allAlerts.filter(a=>a.pid==pid);
+
+    const chips=v.attrs.map((a,idx)=>{
+      const rpt        = a.reorderPoint ?? 5;
+      const st         = getVarStatus(a);
+      const statusColor= st==='out'?'var(--danger)':st==='low'?'var(--warn)':'var(--accent)';
+      const bgColor    = v.type==='color'?a.color+'18':'var(--bg)';
+      const borderColor= st!=='ok' ? statusColor : (v.type==='color'?a.color:'var(--border)');
+      const barPct     = Math.min(100, a.stock / Math.max(a.stock, rpt*3) * 100);
+      const statusEmoji= st==='out'?'🔴':st==='low'?'🟡':'🟢';
+      return`<div class="var-chip" style="background:${bgColor};border-color:${borderColor};${st!=='ok'?'box-shadow:0 0 8px '+statusColor+'44':''}">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:3px">
+          <div style="display:flex;align-items:center;gap:5px">
+            ${v.type==='color'?`<span class="var-chip-color" style="background:${a.color}"></span>`:''}
+            <strong style="font-size:12px">${a.value}</strong>
+          </div>
+          <span style="font-size:11px">${statusEmoji}</span>
+        </div>
+        ${a.skuSuffix?`<div style="font-size:10px;color:var(--muted);font-family:'DM Mono',monospace">${item.sku}${a.skuSuffix}</div>`:''}
+        ${a.barcode?`<div style="font-size:10px;color:var(--muted);font-family:'DM Mono',monospace">▐${a.barcode}▌</div>`:''}
+        <div class="var-chip-bar"><div class="var-chip-bar-fill" style="width:${barPct}%;background:${statusColor}"></div></div>
+        <div style="color:${statusColor};font-size:14px;font-weight:700;margin:5px 0">${a.stock} <span style="font-size:10px;font-weight:400;color:var(--muted)">units</span></div>
+        <div class="var-reorder-badge" style="${st!=='ok'?'border-color:'+statusColor+';color:'+statusColor:''}">
+          <span>⚠ Min:</span> ${rpt}
+        </div>
+        <div style="display:flex;gap:4px;margin-top:6px">
+          <button onclick="variantAdjustStock(${pid},${idx},-1)" style="flex:1;background:color-mix(in srgb,var(--danger) 15%,transparent);border:1px solid var(--danger);color:var(--danger);border-radius:5px;cursor:pointer;font-size:14px;padding:3px 0;font-weight:700">−</button>
+          <button onclick="variantQuickSet(${pid},${idx})" style="flex:0;background:var(--surface2);border:1px solid var(--border);color:var(--muted);border-radius:5px;cursor:pointer;font-size:10px;padding:3px 6px" title="Set exact quantity">✏</button>
+          <button onclick="variantAdjustStock(${pid},${idx},1)" style="flex:1;background:color-mix(in srgb,var(--green) 15%,transparent);border:1px solid var(--green);color:var(--green);border-radius:5px;cursor:pointer;font-size:14px;padding:3px 0;font-weight:700">+</button>
+        </div>
+        <div class="var-chip-status" style="background:${statusColor}"></div>
+      </div>`;
+    }).join('');
+
+    const parentStatusColor = getStatus(item)==='out'?'var(--danger)':getStatus(item)==='low'?'var(--warn)':'var(--accent)';
+
+    return`<div class="var-card" style="${productAlerts.length?'border-color:color-mix(in srgb,var(--warn) 40%,transparent)':''}">
+      <div class="var-card-header">
         <div>
           <div class="var-card-name">${item.name}
-            ${hasOut?`<span style="background:var(--danger);color:#fff;border-radius:99px;padding:1px 8px;font-size:10px;margin-left:6px">${pa.filter(a=>a.status==='out').length} out</span>`:pa.length?`<span style="background:var(--warn);color:#000;border-radius:99px;padding:1px 8px;font-size:10px;margin-left:6px">${pa.length} low</span>`:''}
+            ${productAlerts.length?`<span style="background:var(--danger);color:#fff;border-radius:99px;padding:1px 8px;font-size:10px;margin-left:6px;font-family:'DM Sans',sans-serif;font-weight:600">${productAlerts.length} alert${productAlerts.length>1?'s':''}</span>`:''}
           </div>
           <div style="font-size:11px;color:var(--muted);font-family:'DM Mono',monospace;margin-top:2px">
-            ${item.sku} · ${combos.length} combos · ${axes.map(a=>a.name).join(' × ')} · <span style="color:${parentSC}">${item.stock} total units</span>
+            ${item.sku} · ${v.label} variants · Parent: <span style="color:${parentStatusColor};font-weight:600">${item.stock} units</span>
           </div>
         </div>
-        <div style="display:flex;gap:6px">
-          <button class="btn btn-ghost btn-sm" onclick="openVarDrawer(${pid})">✏️ Edit</button>
+        <div style="display:flex;gap:6px;align-items:center">
+          <button class="btn btn-ghost btn-sm" onclick="openSetReorderModal(${pid})" title="Set reorder points for all variants" style="border-color:var(--warn);color:var(--warn)">⚠ Set Min</button>
+          <button class="btn btn-ghost btn-sm" onclick="editVariant(${pid})">✏️ Edit</button>
           <button class="btn btn-ghost btn-sm" style="color:var(--danger);border-color:var(--danger)" onclick="deleteVariant(${pid})">🗑</button>
         </div>
       </div>
-      ${comboHtml}
+      <div class="var-grid">${chips}</div>
       <div class="var-summary">
-        <div class="var-summary-item">Combos: <span>${combos.length}</span></div>
-        <div class="var-summary-item">Stock: <span>${totalStock}</span></div>
-        <div class="var-summary-item">Cost: <span style="color:var(--blue)">₹${totalCostVal.toLocaleString('en-IN',{maximumFractionDigits:0})}</span></div>
-        <div class="var-summary-item">Revenue: <span style="color:var(--accent)">₹${totalSellVal.toLocaleString('en-IN',{maximumFractionDigits:0})}</span></div>
-        ${avgMargin!==null?`<div class="var-summary-item">Avg Margin: <span style="color:${avgMargin>=40?'var(--accent)':avgMargin>=20?'var(--warn)':'var(--danger)'}">${avgMargin}%</span></div>`:''}
+        <div class="var-summary-item">Variants: <span>${v.attrs.length}</span></div>
+        <div class="var-summary-item">Total Stock: <span>${totalStock}</span></div>
+        <div class="var-summary-item">Value: <span>₹${totalVal.toLocaleString('en-IN',{maximumFractionDigits:0})}</span></div>
+        <div class="var-summary-item">Low/Out: <span style="color:${productAlerts.length?'var(--danger)':'var(--accent)'}">${productAlerts.length}</span></div>
       </div>
     </div>`;
   }).join('');
 
-  renderVarIndex();
-  renderNotifRail();
+  container.innerHTML = html;
   updateAlertCount();
+}
+
+// Quick set exact quantity for a variant
+function variantQuickSet(pid, attrIdx){
+  if(!variants[pid]) return;
+  const attr = variants[pid].attrs[attrIdx];
+  const newVal = prompt(`Set exact stock for "${attr.value}":`, attr.stock);
+  if(newVal === null) return;
+  const parsed = parseInt(newVal);
+  if(isNaN(parsed) || parsed < 0){ toast('⚠️','Invalid quantity'); return; }
+  const delta = parsed - attr.stock;
+  if(delta !== 0) variantAdjustStock(pid, attrIdx, delta);
+}
+
+// Quick reorder modal for setting all min levels at once
+function openSetReorderModal(pid){
+  const item = items.find(i=>i.id==pid);
+  const v = variants[pid];
+  if(!item||!v) return;
+
+  // Build a simple modal-style toast panel
+  const existing = document.getElementById('reorder-modal-overlay');
+  if(existing) existing.remove();
+
+  const overlay = document.createElement('div');
+  overlay.id = 'reorder-modal-overlay';
+  overlay.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:200;display:flex;align-items:center;justify-content:center';
+  overlay.innerHTML=`
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:24px;width:420px;max-width:95vw;max-height:85vh;overflow-y:auto">
+      <div style="font-family:'Syne',sans-serif;font-size:16px;font-weight:700;margin-bottom:4px">⚠ Set Low Stock Alert — Min Quantity</div>
+      <div style="color:var(--muted);font-size:12px;margin-bottom:18px">${item.name} · ${v.label} variants — Alert fires when stock drops at or below this number</div>
+      ${v.attrs.map((a,idx)=>{
+        const rpt = a.reorderPoint ?? 5;
+        const st  = getVarStatus(a);
+        const sc  = st==='out'?'var(--danger)':st==='low'?'var(--warn)':'var(--accent)';
+        return`<div style="display:flex;align-items:center;gap:11px;padding:10px 0;border-bottom:1px solid var(--border)">
+          ${v.type==='color'?`<span style="width:12px;height:12px;border-radius:50%;background:${a.color};flex-shrink:0;border:1px solid rgba(255,255,255,.2)"></span>`:''}
+          <div style="flex:1">
+            <div style="font-weight:600;font-size:13px">${a.value}</div>
+            <div style="font-size:11px;color:${sc}">Current: ${a.stock} units</div>
+          </div>
+          <div style="display:flex;flex-direction:column;align-items:center;gap:2px">
+            <div style="font-size:10px;color:var(--warn);text-transform:uppercase;letter-spacing:.3px">Alert below</div>
+            <input id="rp-input-${idx}" type="number" min="0" value="${rpt}" style="width:65px;padding:6px 8px;background:var(--bg);border:2px solid var(--warn);border-radius:7px;color:var(--text);font-family:'DM Mono',monospace;font-size:14px;text-align:center;outline:none">
+          </div>
+        </div>`;
+      }).join('')}
+      <div style="display:flex;gap:8px;margin-top:18px;justify-content:flex-end">
+        <button onclick="document.getElementById('reorder-modal-overlay').remove()" style="padding:8px 16px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text);cursor:pointer;font-family:'DM Sans',sans-serif">Cancel</button>
+        <button onclick="saveReorderPoints(${pid})" style="padding:8px 16px;background:var(--accent);border:none;border-radius:8px;color:#000;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif">💾 Save Alert Thresholds</button>
+      </div>
+    </div>`;
+  document.body.appendChild(overlay);
+  overlay.addEventListener('click', e=>{ if(e.target===overlay) overlay.remove(); });
+}
+
+function saveReorderPoints(pid){
+  const v = variants[pid];
+  if(!v) return;
+  v.attrs.forEach((a,idx)=>{
+    const inp = document.getElementById('rp-input-'+idx);
+    if(inp) a.reorderPoint = parseInt(inp.value)||0;
+  });
+  localStorage.setItem('sf_variants', JSON.stringify(variants));
+  document.getElementById('reorder-modal-overlay')?.remove();
+  renderVarCards();
+  updateAlertCount();
+  syncToSheet();
+  toast('✅','Alert thresholds saved & synced!');
 }
 
 function deleteVariant(pid){
   if(!confirm('Delete all variants for this product?')) return;
   delete variants[pid];
-  localStorage.setItem('sf_variants',JSON.stringify(variants));
-  renderVarCards(); populateVarProductSelect(); syncToSheet();
+  localStorage.setItem('sf_variants', JSON.stringify(variants));
+  renderVarCards();
+  populateVarProductSelect();
+  syncToSheet();
   toast('🗑️','Variants deleted');
-}
-
-function findVariantByBarcode(barcode){
-  // barcode already normalised (alphanumeric lowercase) by caller
-  for(const [pid,vData] of Object.entries(variants)){
-    const combos=vData.combos||vData.attrs||[];
-    const idx=combos.findIndex(c=>{
-      const cb=(c.barcode||'').replace(/[^a-z0-9]/gi,'').toLowerCase();
-      const cs=(c.sku||'').replace(/[^a-z0-9]/gi,'').toLowerCase();
-      return (cb && cb===barcode) || cs===barcode;
-    });
-    if(idx!==-1) return{pid,comboIdx:idx,combo:combos[idx]};
-  }
-  return null;
 }
 
 /* ============================================================
@@ -3350,9 +2631,8 @@ async function init() {
   const fd = new Date(); fd.setDate(fd.getDate()+30);
   document.getElementById('g-due-date').value = fd.toISOString().split('T')[0];
 
-  // Init variants form
-  varAxes = [];
-  renderAxes();
+  // Init variants form with 3 empty rows
+  addVarAttrRow(); addVarAttrRow(); addVarAttrRow();
 
   // Init production form with default rows
   addRawRow('',1,0); addRawRow('',1,0); addRawRow('',1,0);
