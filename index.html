@@ -1688,7 +1688,7 @@ function processBarcodeScan(mode) {
   const qtyEl   = document.getElementById(mode+'-qty-input');
   const raw     = inputEl.value.trim();
   // Strip ALL non-alphanumeric chars so spaces/dashes/invisible chars never cause mismatch
-  const norm    = v => (v||'').replace(/[^a-z0-9]/gi,'').toLowerCase();
+  const norm    = v => String(v ?? '').replace(/[^a-z0-9]/gi,'').toLowerCase();
   const barcode = norm(raw);
   const qty     = parseInt(qtyEl.value) || 1;
 
@@ -1816,7 +1816,7 @@ function processBarcodeScan(mode) {
 }
 
 function showBarcodeDebug(){
-  const norm    = v => (v||'').replace(/[^a-z0-9]/gi,'').toLowerCase();
+  const norm    = v => String(v ?? '').replace(/[^a-z0-9]/gi,'').toLowerCase();
   const scanned = document.getElementById('add-barcode-input').value.trim();
   const nc      = norm(scanned);
 
@@ -2081,7 +2081,7 @@ function renderStats() {
 function getFiltered() {
   const q=document.getElementById('search').value.toLowerCase(), cat=document.getElementById('filter-cat').value, st=document.getElementById('filter-status').value;
   let res=items.filter(i=>{
-    if(q&&!i.name.toLowerCase().includes(q)&&!i.sku.toLowerCase().includes(q)&&!(i.barcode||'').includes(q))return false;
+    if(q&&!String(i.name??'').toLowerCase().includes(q)&&!String(i.sku??'').toLowerCase().includes(q)&&!String(i.barcode??'').toLowerCase().includes(q))return false;
     if(cat&&i.category!==cat)return false;
     if(st&&getStatus(i)!==st)return false;
     return true;
@@ -2970,8 +2970,8 @@ function findVariantByBarcode(barcode){
   for(const [pid,vData] of Object.entries(variants)){
     const combos=vData.combos||vData.attrs||[];
     const idx=combos.findIndex(c=>{
-      const cb=(c.barcode||'').replace(/[^a-z0-9]/gi,'').toLowerCase();
-      const cs=(c.sku||'').replace(/[^a-z0-9]/gi,'').toLowerCase();
+      const cb=String(c.barcode ?? '').replace(/[^a-z0-9]/gi,'').toLowerCase();
+      const cs=String(c.sku ?? '').replace(/[^a-z0-9]/gi,'').toLowerCase();
       return (cb && cb===barcode) || cs===barcode;
     });
     if(idx!==-1) return{pid,comboIdx:idx,combo:combos[idx]};
