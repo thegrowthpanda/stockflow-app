@@ -1681,27 +1681,29 @@ function onScanFailure(error) {
 const scanHistory = [];
 let addCamScanner = null;
 let deductCamScanner = null;
+let lastUsedCameraMode = null;
 let lastNotFoundBarcode = '';
 
 function processBarcodeScan(mode) {
-  const inputEl = document.getElementById(mode+'-barcode-input');
-  const qtyEl   = document.getElementById(mode+'-qty-input');
+  const inputEl = document.getElementById(mode + '-barcode-input');
+  const qtyEl   = document.getElementById(mode + '-qty-input');
   const raw     = inputEl.value.trim();
-  // Strip ALL non-alphanumeric chars so spaces/dashes/invisible chars never cause mismatch
-  const norm    = v => (v||'').replace(/[^a-z0-9]/gi,'').toLowerCase();
-  const barcode = norm(raw);
   const qty     = parseInt(qtyEl.value) || 1;
 
   document.getElementById(mode+'-result-card').classList.remove('show');
   document.getElementById(mode+'-not-found').classList.remove('show');
   if(mode==='deduct') document.getElementById('deduct-warn').style.display='none';
 
-  if(!barcode){ toast('⚠️','Please enter or scan a barcode'); inputEl.focus(); return false; }
+  if(!raw){ toast('⚠️','Please scan or enter a barcode first'); inputEl.focus(); return false; }
   if(qty < 1){ toast('⚠️','Quantity must be at least 1'); return false; }
 
-  // ── 1. Try variant first ──
+  // Normalize: strip non-alphanumeric, lowercase
+  const norm = v => (v||'').replace(/[^a-z0-9]/gi,'').toLowerCase();
+  const bc   = norm(raw);
+
+  // ── 1. Try variant match ──
   let matchedVariant=null, matchedVarParent=null, matchedVarIdx=-1, matchedVarPid;
-  const varMatch = findVariantByBarcode(barcode);
+  const varMatch = findVariantByBarcode(bc);
   if(varMatch){
     matchedVarPid    = varMatch.pid;
     matchedVarIdx    = varMatch.comboIdx;
@@ -1709,134 +1711,100 @@ function processBarcodeScan(mode) {
     matchedVarParent = items.find(i=>i.id==varMatch.pid);
   }
 
-  // ── 2. Match parent — 3 passes ──
+  // ── 2. Match parent item ──
   let item = matchedVarParent;
-  if(!item){
-    // Pass 1: normalised barcode field exact match
-    item = items.find(i => norm(i.barcode) === barcode);
-    // Pass 2: normalised SKU exact match
-    if(!item) item = items.find(i => norm(i.sku) === barcode);
-    // Pass 3: partial contains (QR prefix wrapping, extra chars)
-    if(!item) item = items.find(i => {
-      const b = norm(i.barcode);
-      const s = norm(i.sku);
-      return (b && (b.includes(barcode) || barcode.includes(b))) ||
-             (s && (s.includes(barcode) || barcode.includes(s)));
-    });
-  }
+  if(!item) item = items.find(i => norm(i.barcode) === bc);
+  if(!item) item = items.find(i => norm(i.sku)     === bc);
+  if(!item) item = items.find(i => {
+    const b=norm(i.barcode), s=norm(i.sku);
+    return (b&&(b.includes(bc)||bc.includes(b)))||(s&&(s.includes(bc)||bc.includes(s)));
+  });
 
-  // ── Not found — show debug info ──
+  // ── Not found ──
   if(!item && !matchedVariant){
     lastNotFoundBarcode = raw;
-    const stored = items.slice(0,5).map(i=>`${i.name}: "${i.barcode||''}"`).join(' | ');
     document.getElementById(mode+'-not-found').classList.add('show');
-    document.getElementById(mode+'-not-found-code').innerHTML =
-      `Scanned: <strong>"${raw}"</strong> · Items loaded: ${items.length}<br>
-       <span style="font-size:10px;color:var(--muted)">First 5 barcodes: ${stored}</span>`;
-    toast('❌', `Not found: "${raw}" · ${items.length} items in memory`);
+    document.getElementById(mode+'-not-found-code').textContent = 'Scanned: "' + raw + '"';
+    toast('❌', `"${raw}" not found · ${items.length} items loaded`);
     inputEl.value=''; inputEl.focus();
     return false;
   }
 
-  // ── 3. Apply stock change ──
+  // ── 3. Apply change ──
   const before    = item.stock;
+  const isAdd     = mode==='add';
   let variantNote = '';
-  const isAdd     = mode === 'add';
 
   if(isAdd){
     item.stock += qty;
     if(matchedVariant){
       matchedVariant.stock += qty;
-      variantNote = ` (${(matchedVariant.labels||[matchedVariant.value||'']).join('/')} +${qty})`;
+      variantNote = ` (${(matchedVariant.labels||[matchedVariant.value||'']).join('/')})`;
     }
   } else {
     if(qty > item.stock){
       document.getElementById('deduct-warn').style.display='block';
-      document.getElementById('deduct-warn-msg').textContent = `Only ${item.stock} in stock, cannot deduct ${qty}.`;
+      document.getElementById('deduct-warn-msg').textContent=`Only ${item.stock} in stock.`;
       inputEl.value=''; inputEl.focus();
       return false;
     }
     item.stock -= qty;
     if(matchedVariant){
       matchedVariant.stock = Math.max(0, matchedVariant.stock - qty);
-      variantNote = ` (${(matchedVariant.labels||[matchedVariant.value||'']).join('/')} -${qty})`;
+      variantNote = ` (${(matchedVariant.labels||[matchedVariant.value||'']).join('/')})`;
     }
   }
 
   const after = item.stock;
 
-  // ── 4. Update variant storage ──
-  if(matchedVariant && matchedVarPid !== undefined){
-    const vData    = variants[matchedVarPid];
-    const comboArr = vData.combos || vData.attrs;
-    comboArr[matchedVarIdx] = matchedVariant;
-    localStorage.setItem('sf_variants', JSON.stringify(variants));
+  // ── 4. Save variant ──
+  if(matchedVariant && matchedVarPid!==undefined){
+    const arr=(variants[matchedVarPid].combos||variants[matchedVarPid].attrs);
+    arr[matchedVarIdx]=matchedVariant;
+    localStorage.setItem('sf_variants',JSON.stringify(variants));
     renderVarCards();
   }
 
-  // ── 5. Show result card ──
+  // ── 5. Result card ──
   document.getElementById(mode+'-result-name').textContent = item.name + variantNote;
-  document.getElementById(mode+'-result-sku').textContent  = item.sku + (item.barcode?' · '+item.barcode:'');
-  document.getElementById(mode+'-before').textContent      = before;
-  document.getElementById(mode+'-delta').textContent       = (isAdd?'+':'-')+qty;
-  document.getElementById(mode+'-after').textContent       = after;
-  if(!isAdd) document.getElementById('deduct-after').style.color = after <= item.reorderPoint ? 'var(--danger)' : 'var(--accent)';
+  document.getElementById(mode+'-result-sku').textContent  = item.sku+(item.barcode?' · '+item.barcode:'');
+  document.getElementById(mode+'-before').textContent = before;
+  document.getElementById(mode+'-delta').textContent  = (isAdd?'+':'-')+qty;
+  document.getElementById(mode+'-after').textContent  = after;
+  if(!isAdd) document.getElementById('deduct-after').style.color = after<=item.reorderPoint?'var(--danger)':'var(--accent)';
   document.getElementById(mode+'-result-card').classList.add('show');
 
-  // ── 6. Low/out warning on deduct ──
+  // ── 6. Low stock warning ──
   if(!isAdd){
-    if(after === 0){
+    if(after===0){
       document.getElementById('deduct-warn').style.display='block';
-      document.getElementById('deduct-warn-msg').textContent = `${item.name} is now OUT OF STOCK!`;
-    } else if(after <= item.reorderPoint){
+      document.getElementById('deduct-warn-msg').textContent=`${item.name} is OUT OF STOCK!`;
+    } else if(after<=item.reorderPoint){
       document.getElementById('deduct-warn').style.display='block';
-      document.getElementById('deduct-warn-msg').textContent = `${item.name} is low — ${after} left (reorder at ${item.reorderPoint})`;
+      document.getElementById('deduct-warn-msg').textContent=`${item.name} low — ${after} left (min ${item.reorderPoint})`;
     }
   }
 
-  // ── 7. Log + sync ──
-  const scanLog = {
-    timestamp: new Date().toISOString(), mode,
-    name: item.name+(matchedVariant?' ['+matchedVariant.value+']':''),
-    sku: item.sku, barcode: raw, qty, before, after,
-    variantValue: matchedVariant?(matchedVariant.labels||[matchedVariant.value||'']).join(' / '):'',
-    parentSku: item.sku
+  // ── 7. Save + sync ──
+  const scanLog={
+    timestamp:new Date().toISOString(), mode,
+    name:item.name+(matchedVariant?' ['+matchedVariant.value+']':''),
+    sku:item.sku, barcode:raw, qty, before, after,
+    variantValue:matchedVariant?(matchedVariant.labels||[matchedVariant.value||'']).join('/'):'',
+    parentSku:item.sku
   };
-
   addToScanHistory(mode, item, qty, before, after, matchedVariant);
-  toast(isAdd?'✅':'📤', `${isAdd?'+':'-'}${qty} · ${item.name}${variantNote} · Stock: ${before} → ${after}`);
-
-  inputEl.value = '';
-  qtyEl.value   = 1;
-  inputEl.focus();
+  toast(isAdd?'✅':'📤', `${isAdd?'+':'-'}${qty} · ${item.name}${variantNote} · Stock: ${before}→${after}`);
+  inputEl.value=''; qtyEl.value=1; inputEl.focus();
   render();
   syncToSheet(scanLog);
-  return true;
-}
 
-function showBarcodeDebug(){
-  const norm    = v => (v||'').replace(/[^a-z0-9]/gi,'').toLowerCase();
-  const scanned = document.getElementById('add-barcode-input').value.trim();
-  const nc      = norm(scanned);
-
-  let out = `ITEMS IN MEMORY: ${items.length}\n`;
-  out    += `Scanned: "${scanned}"\nNormalised: "${nc}"\n\n`;
-
-  if(items.length === 0){
-    out += `⚠️ NO ITEMS LOADED — click Sync Now`;
-  } else {
-    items.forEach((i,n) => {
-      const nb  = norm(i.barcode||'');
-      const ns  = norm(i.sku||'');
-      const hit = nb===nc || ns===nc || (nb&&(nb.includes(nc)||nc.includes(nb)));
-      out += `${n+1}. ${i.name}\n   BC:"${i.barcode||'EMPTY'}" NS:"${i.sku||''}"\n   ${hit?'✅ MATCH':'❌'}\n`;
-    });
+  // Reopen camera after 1.5s if it was used for this scan
+  if(lastUsedCameraMode === mode){
+    setTimeout(()=>{ toggleScanCamera(mode); lastUsedCameraMode=null; }, 1500);
   }
 
-  // Show inline — no alert needed
-  let panel = document.getElementById('add-debug-panel');
-  panel.textContent = out;
-  panel.style.cssText = 'display:block;background:#050a0f;border:2px solid #ffd166;border-radius:9px;padding:14px;margin-top:10px;font-family:monospace;font-size:11px;color:#ffd166;max-height:50vh;overflow-y:scroll;white-space:pre;word-break:break-all;z-index:999;position:relative';
+  return true;
 }
 
 function addToScanHistory(mode, item, qty, before, after, variant=null){
@@ -1878,37 +1846,31 @@ function toggleScanCamera(mode){
   const readerEl = document.getElementById(readerId);
   let scanner = mode==='add' ? addCamScanner : deductCamScanner;
 
-  // If already open — close it
+  // Already open — close it
   if(scanner){
     scanner.clear().catch(()=>{});
     if(mode==='add') addCamScanner=null; else deductCamScanner=null;
     readerEl.style.display='none';
+    lastUsedCameraMode=null;
     return;
   }
 
   readerEl.style.display='block';
-
   const newScanner = new Html5QrcodeScanner(readerId,
     {fps:15, qrbox:{width:300, height:120}, supportedScanTypes:[Html5QrcodeScanType.SCAN_TYPE_CAMERA]}, false);
 
   newScanner.render((decodedText)=>{
-    // Clean scanned value
-    const cleaned = decodedText.replace(/\s+/g,'').trim();
+    // Fill input with scanned value
+    document.getElementById(mode+'-barcode-input').value = decodedText.replace(/\s+/g,'').trim();
 
-    // Stop camera immediately
+    // Close camera
     newScanner.clear().catch(()=>{});
     if(mode==='add') addCamScanner=null; else deductCamScanner=null;
     readerEl.style.display='none';
 
-    // Put value into input and process
-    document.getElementById(mode+'-barcode-input').value = cleaned;
-    const success = processBarcodeScan(mode);
-
-    // Reopen camera after 2s whether success or not — user keeps scanning
-    setTimeout(()=>{
-      if(document.getElementById(mode+'-barcode-input')) toggleScanCamera(mode);
-    }, success ? 2000 : 2500);
-
+    // Mark that camera was used so we reopen after Add
+    lastUsedCameraMode = mode;
+    toast('📷', 'Barcode scanned! Tap Add to update stock.');
   }, ()=>{});
 
   if(mode==='add') addCamScanner=newScanner; else deductCamScanner=newScanner;
