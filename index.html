@@ -1821,16 +1821,31 @@ function showBarcodeDebug(){
 
   let out = `=== BARCODE DEBUG ===\n`;
   out += `Items in memory: ${items.length}\n`;
-  out += `localStorage key sf_v3 length: ${(localStorage.getItem('sf_v3')||'').length}\n`;
-  out += `Scanned value: "${scanned}"\n`;
+  out += `localStorage sf_v3 bytes: ${(localStorage.getItem('sf_v3')||'').length}\n`;
+  out += `Scanned raw:   "${scanned}"\n`;
   out += `Normalised:    "${norm(scanned)}"\n\n`;
-  out += `--- ALL STORED BARCODES ---\n`;
-  items.forEach((i,idx) => {
-    const match = norm(i.barcode||'') === norm(scanned) || norm(i.sku||'') === norm(scanned);
-    out += `${idx+1}. ${i.name}\n   barcode: "${i.barcode||''}" → norm: "${norm(i.barcode||'')}"\n   sku:     "${i.sku||''}" → norm: "${norm(i.sku||'')}"\n   MATCH: ${match ? '✅ YES' : '❌ no'}\n\n`;
-  });
-  panel.style.display = 'block';
+
+  if(items.length === 0){
+    out += `⚠️ NO ITEMS IN MEMORY!\n`;
+    out += `This means data hasn't loaded from Sheets yet.\n`;
+    out += `Try: 1) Click Sync Now  2) Reload the page\n`;
+  } else {
+    out += `--- ALL STORED BARCODES (${items.length} items) ---\n`;
+    items.forEach((i,idx) => {
+      const nb = norm(i.barcode||'');
+      const ns = norm(i.sku||'');
+      const nc = norm(scanned);
+      const match = nb===nc || ns===nc || (nb&&(nb.includes(nc)||nc.includes(nb))) || (ns&&(ns.includes(nc)||nc.includes(ns)));
+      out += `${idx+1}. ${i.name}\n`;
+      out += `   barcode: "${i.barcode||'(empty)'}"\n`;
+      out += `   sku:     "${i.sku||''}"\n`;
+      out += `   MATCH:   ${match ? '✅ YES' : '❌ no'}\n\n`;
+    });
+  }
+
+  console.log(out);
   panel.textContent = out;
+  panel.style.cssText = 'display:block!important;background:#0a0f1a;border:1px solid var(--warn);border-radius:9px;padding:14px;margin-top:10px;font-family:monospace;font-size:11px;color:#ffd166;max-height:400px;overflow-y:auto;white-space:pre-wrap;word-break:break-all';
 }
 
 function addToScanHistory(mode, item, qty, before, after, variant=null){
