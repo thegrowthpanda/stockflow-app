@@ -615,6 +615,9 @@ kbd{background:var(--surface2);border:1px solid var(--border);border-radius:4px;
           <button class="btn btn-green" onclick="processBarcodeScan('add')" style="height:46px;align-self:flex-end">➕ Add</button>
         </div>
         <div id="add-cam-reader" class="reader-scan"></div>
+        <!-- DEBUG PANEL -->
+        <div id="add-debug-panel" style="display:none;background:#0a0f1a;border:1px solid var(--warn);border-radius:9px;padding:14px;margin-top:10px;font-family:'DM Mono',monospace;font-size:11px;color:var(--warn);max-height:300px;overflow-y:auto;white-space:pre-wrap"></div>
+        <button class="btn btn-ghost btn-sm" onclick="showBarcodeDebug()" style="margin-top:8px;font-size:11px;color:var(--muted)">🔍 Debug: Show all stored barcodes</button>
         <div class="not-found-card" id="add-not-found">
           <div style="font-size:28px;margin-bottom:6px">🔍</div>
           <div style="font-weight:600;margin-bottom:3px">Barcode not found in inventory</div>
@@ -1811,7 +1814,26 @@ function processBarcodeScan(mode) {
   return true;
 }
 
-function addToScanHistory(mode, item, qty, before, after, variant=null){
+function showBarcodeDebug(){
+  const panel = document.getElementById('add-debug-panel');
+  const norm  = v => (v||'').replace(/[^a-z0-9]/gi,'').toLowerCase();
+  const scanned = document.getElementById('add-barcode-input').value.trim();
+
+  let out = `=== BARCODE DEBUG ===\n`;
+  out += `Items in memory: ${items.length}\n`;
+  out += `localStorage key sf_v3 length: ${(localStorage.getItem('sf_v3')||'').length}\n`;
+  out += `Scanned value: "${scanned}"\n`;
+  out += `Normalised:    "${norm(scanned)}"\n\n`;
+  out += `--- ALL STORED BARCODES ---\n`;
+  items.forEach((i,idx) => {
+    const match = norm(i.barcode||'') === norm(scanned) || norm(i.sku||'') === norm(scanned);
+    out += `${idx+1}. ${i.name}\n   barcode: "${i.barcode||''}" → norm: "${norm(i.barcode||'')}"\n   sku:     "${i.sku||''}" → norm: "${norm(i.sku||'')}"\n   MATCH: ${match ? '✅ YES' : '❌ no'}\n\n`;
+  });
+  panel.style.display = 'block';
+  panel.textContent = out;
+}
+
+
   const now = new Date();
   const timeStr = now.toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
   scanHistory.unshift({mode, name:item.name, sku:item.sku, qty, before, after, time:timeStr, variant:variant?variant.value:null});
