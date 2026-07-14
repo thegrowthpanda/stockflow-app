@@ -1989,6 +1989,8 @@ async function syncToSheet(scanLog=null) {
 
   if (!SCRIPT_URL || !isConnected) return;
 
+  // If a sync is already in flight, just flag that another is needed once
+  // it finishes — never let two POSTs race each other to the sheet.
   if (syncInFlight) { syncQueued = true; return; }
   syncInFlight = true;
 
@@ -2010,7 +2012,7 @@ async function syncToSheet(scanLog=null) {
       setSyncState('error', 'Sync failed! Saved locally.');
       console.error('Sync error:', e);
     }
-  } while (syncQueued);
+  } while (syncQueued); // pick up anything queued while we were mid-flight
 
   syncInFlight = false;
 }
