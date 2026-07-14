@@ -1727,9 +1727,9 @@ function processBarcodeScan(mode) {
     lastNotFoundBarcode = raw;
     document.getElementById(mode+'-not-found').classList.add('show');
     document.getElementById(mode+'-not-found-code').textContent = 'Scanned: "' + raw + '"';
-    toast('❌','Barcode not found in inventory');
+    toast('❌','Barcode not found: "' + raw + '"');
     inputEl.value=''; inputEl.focus();
-    return;
+    return false;
   }
 
   // ── 3. Apply stock change ──
@@ -1808,13 +1808,17 @@ function processBarcodeScan(mode) {
   };
 
   addToScanHistory(mode, item, qty, before, after, matchedVariant);
-  toast('✅', `${isAdd?'+':'-'}${qty}${variantNote} → ${item.name} stock: ${after}`);
+
+  // Big success notification
+  const actionLabel = isAdd ? `+${qty} added` : `-${qty} deducted`;
+  toast(isAdd ? '✅' : '📤', `${actionLabel} · ${item.name}${variantNote} · Stock: ${before} → ${after}`);
 
   inputEl.value = '';
   qtyEl.value = 1;
   inputEl.focus();
   render();
   syncToSheet(scanLog);
+  return true;
 }
 
 function addToScanHistory(mode, item, qty, before, after, variant=null){
@@ -1856,6 +1860,7 @@ function toggleScanCamera(mode){
   const readerEl = document.getElementById(readerId);
   let scanner = mode==='add' ? addCamScanner : deductCamScanner;
 
+  // If already open — close it
   if(scanner){
     scanner.clear().catch(()=>{});
     if(mode==='add') addCamScanner=null; else deductCamScanner=null;
@@ -1864,17 +1869,28 @@ function toggleScanCamera(mode){
   }
 
   readerEl.style.display='block';
+
   const newScanner = new Html5QrcodeScanner(readerId,
-    {fps:10, qrbox:{width:280, height:110}, supportedScanTypes:[Html5QrcodeScanType.SCAN_TYPE_CAMERA]}, false);
+    {fps:15, qrbox:{width:300, height:120}, supportedScanTypes:[Html5QrcodeScanType.SCAN_TYPE_CAMERA]}, false);
 
   newScanner.render((decodedText)=>{
-    document.getElementById(mode+'-barcode-input').value = decodedText;
-    new Audio('data:audio/mp3;base64,//NExAAAAANIAAAAAExBTUUzLjEwMKqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq/9jDAAAABzOEAAAAAABzhAAAB//OAAAA//OAAAA//OAAAA//OAAAA//OAAAA//OAAAA//OAAAA').play().catch(()=>{});
+    // Clean scanned value
+    const cleaned = decodedText.replace(/\s+/g,'').trim();
+
+    // Stop camera immediately
     newScanner.clear().catch(()=>{});
-    readerEl.style.display='none';
     if(mode==='add') addCamScanner=null; else deductCamScanner=null;
-    toast('📷','Barcode scanned!');
-    setTimeout(()=>processBarcodeScan(mode), 300);
+    readerEl.style.display='none';
+
+    // Put value into input and process
+    document.getElementById(mode+'-barcode-input').value = cleaned;
+    const success = processBarcodeScan(mode);
+
+    // Reopen camera after 2s whether success or not — user keeps scanning
+    setTimeout(()=>{
+      if(document.getElementById(mode+'-barcode-input')) toggleScanCamera(mode);
+    }, success ? 2000 : 2500);
+
   }, ()=>{});
 
   if(mode==='add') addCamScanner=newScanner; else deductCamScanner=newScanner;
@@ -2003,7 +2019,7 @@ function updateLastSync() {
 
 function showLoading(t) { document.getElementById('loading-text').textContent=t; document.getElementById('loading').classList.add('show'); }
 function hideLoading() { document.getElementById('loading').classList.remove('show'); }
-function toast(icon,msg){const el=document.getElementById('toast');document.getElementById('toast-icon').textContent=icon;document.getElementById('toast-msg').textContent=msg;el.classList.add('show');setTimeout(()=>el.classList.remove('show'),3000)}
+function toast(icon,msg){const el=document.getElementById('toast');document.getElementById('toast-icon').textContent=icon;document.getElementById('toast-msg').textContent=msg;el.classList.add('show');setTimeout(()=>el.classList.remove('show'),4000)}
 
 /* ============================================================
    RENDER CORE
