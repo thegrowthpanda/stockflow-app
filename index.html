@@ -1815,37 +1815,25 @@ function processBarcodeScan(mode) {
 }
 
 function showBarcodeDebug(){
-  const panel = document.getElementById('add-debug-panel');
-  const norm  = v => (v||'').replace(/[^a-z0-9]/gi,'').toLowerCase();
+  const norm    = v => (v||'').replace(/[^a-z0-9]/gi,'').toLowerCase();
   const scanned = document.getElementById('add-barcode-input').value.trim();
 
-  let out = `=== BARCODE DEBUG ===\n`;
-  out += `Items in memory: ${items.length}\n`;
-  out += `localStorage sf_v3 bytes: ${(localStorage.getItem('sf_v3')||'').length}\n`;
-  out += `Scanned raw:   "${scanned}"\n`;
-  out += `Normalised:    "${norm(scanned)}"\n\n`;
+  let out = `ITEMS IN MEMORY: ${items.length}\n`;
+  out    += `localStorage bytes: ${(localStorage.getItem('sf_v3')||'').length}\n`;
+  out    += `Scanned: "${scanned}" → norm: "${norm(scanned)}"\n\n`;
 
   if(items.length === 0){
-    out += `⚠️ NO ITEMS IN MEMORY!\n`;
-    out += `This means data hasn't loaded from Sheets yet.\n`;
-    out += `Try: 1) Click Sync Now  2) Reload the page\n`;
+    out += `⚠️ NO ITEMS LOADED!\nClick Sync Now then retry.`;
   } else {
-    out += `--- ALL STORED BARCODES (${items.length} items) ---\n`;
-    items.forEach((i,idx) => {
+    out += `BARCODES STORED:\n`;
+    items.forEach((i,n) => {
       const nb = norm(i.barcode||'');
-      const ns = norm(i.sku||'');
       const nc = norm(scanned);
-      const match = nb===nc || ns===nc || (nb&&(nb.includes(nc)||nc.includes(nb))) || (ns&&(ns.includes(nc)||nc.includes(ns)));
-      out += `${idx+1}. ${i.name}\n`;
-      out += `   barcode: "${i.barcode||'(empty)'}"\n`;
-      out += `   sku:     "${i.sku||''}"\n`;
-      out += `   MATCH:   ${match ? '✅ YES' : '❌ no'}\n\n`;
+      const hit = nb===nc || norm(i.sku||'')===nc;
+      out += `${n+1}. ${i.name} | BC:"${i.barcode||''}" | ${hit?'✅MATCH':'❌'})\n`;
     });
   }
-
-  console.log(out);
-  panel.textContent = out;
-  panel.style.cssText = 'display:block!important;background:#0a0f1a;border:1px solid var(--warn);border-radius:9px;padding:14px;margin-top:10px;font-family:monospace;font-size:11px;color:#ffd166;max-height:400px;overflow-y:auto;white-space:pre-wrap;word-break:break-all';
+  alert(out);
 }
 
 function addToScanHistory(mode, item, qty, before, after, variant=null){
