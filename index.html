@@ -1833,7 +1833,7 @@ function showBarcodeDebug(){
   panel.textContent = out;
 }
 
-
+function addToScanHistory(mode, item, qty, before, after, variant=null){
   const now = new Date();
   const timeStr = now.toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
   scanHistory.unshift({mode, name:item.name, sku:item.sku, qty, before, after, time:timeStr, variant:variant?variant.value:null});
