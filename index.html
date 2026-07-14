@@ -616,8 +616,8 @@ kbd{background:var(--surface2);border:1px solid var(--border);border-radius:4px;
         </div>
         <div id="add-cam-reader" class="reader-scan"></div>
         <!-- DEBUG PANEL -->
-        <div id="add-debug-panel" style="display:none;background:#0a0f1a;border:1px solid var(--warn);border-radius:9px;padding:14px;margin-top:10px;font-family:'DM Mono',monospace;font-size:11px;color:var(--warn);max-height:300px;overflow-y:auto;white-space:pre-wrap"></div>
-        <button class="btn btn-ghost btn-sm" onclick="showBarcodeDebug()" style="margin-top:8px;font-size:11px;color:var(--muted)">🔍 Debug: Show all stored barcodes</button>
+        <div id="add-debug-panel" style="display:none"></div>
+        <button onclick="showBarcodeDebug()" style="margin-top:10px;width:100%;padding:10px;background:#1a1200;border:1px solid #ffd166;border-radius:8px;color:#ffd166;font-size:12px;font-weight:700;cursor:pointer">🔍 DEBUG — tap to show stored barcodes</button>
         <div class="not-found-card" id="add-not-found">
           <div style="font-size:28px;margin-bottom:6px">🔍</div>
           <div style="font-weight:600;margin-bottom:3px">Barcode not found in inventory</div>
@@ -1817,23 +1817,26 @@ function processBarcodeScan(mode) {
 function showBarcodeDebug(){
   const norm    = v => (v||'').replace(/[^a-z0-9]/gi,'').toLowerCase();
   const scanned = document.getElementById('add-barcode-input').value.trim();
+  const nc      = norm(scanned);
 
   let out = `ITEMS IN MEMORY: ${items.length}\n`;
-  out    += `localStorage bytes: ${(localStorage.getItem('sf_v3')||'').length}\n`;
-  out    += `Scanned: "${scanned}" → norm: "${norm(scanned)}"\n\n`;
+  out    += `Scanned: "${scanned}"\nNormalised: "${nc}"\n\n`;
 
   if(items.length === 0){
-    out += `⚠️ NO ITEMS LOADED!\nClick Sync Now then retry.`;
+    out += `⚠️ NO ITEMS LOADED — click Sync Now`;
   } else {
-    out += `BARCODES STORED:\n`;
     items.forEach((i,n) => {
-      const nb = norm(i.barcode||'');
-      const nc = norm(scanned);
-      const hit = nb===nc || norm(i.sku||'')===nc;
-      out += `${n+1}. ${i.name} | BC:"${i.barcode||''}" | ${hit?'✅MATCH':'❌'})\n`;
+      const nb  = norm(i.barcode||'');
+      const ns  = norm(i.sku||'');
+      const hit = nb===nc || ns===nc || (nb&&(nb.includes(nc)||nc.includes(nb)));
+      out += `${n+1}. ${i.name}\n   BC:"${i.barcode||'EMPTY'}" NS:"${i.sku||''}"\n   ${hit?'✅ MATCH':'❌'}\n`;
     });
   }
-  alert(out);
+
+  // Show inline — no alert needed
+  let panel = document.getElementById('add-debug-panel');
+  panel.textContent = out;
+  panel.style.cssText = 'display:block;background:#050a0f;border:2px solid #ffd166;border-radius:9px;padding:14px;margin-top:10px;font-family:monospace;font-size:11px;color:#ffd166;max-height:50vh;overflow-y:scroll;white-space:pre;word-break:break-all;z-index:999;position:relative';
 }
 
 function addToScanHistory(mode, item, qty, before, after, variant=null){
