@@ -3286,6 +3286,407 @@ function renderIterSummary(){
 /* ============================================================
    START APP
    ============================================================ */
+/* ============================================================
+   FINANCE IQ
+   ============================================================ */
+let fiState = JSON.parse(localStorage.getItem('finiq_state')||'{}');
+if(!fiState.assets)    fiState.assets=[];
+if(!fiState.liabs)     fiState.liabs=[];
+if(!fiState.benefits)  fiState.benefits=[];
+if(!fiState.costs)     fiState.costs=[];
+if(!fiState.overhead)  fiState.overhead=[];
+if(!fiState.fixedcosts)fiState.fixedcosts=[];
+if(!fiState.ratios)    fiState.ratios={};
+if(!fiState.rev)       fiState.rev={};
+if(!fiState.pp)        fiState.pp={};
+if(!fiState.ltv)       fiState.ltv={};
+if(!fiState.aac)       fiState.aac={};
+
+function fiSwitch(sec, btn){
+  document.querySelectorAll('.fi-section').forEach(s=>s.classList.remove('active'));
+  document.querySelectorAll('.fi-tab').forEach(b=>b.classList.remove('active'));
+  const el=document.getElementById('fi-'+sec);
+  if(el) el.classList.add('active');
+  if(btn) btn.classList.add('active');
+  if(sec==='overview') renderFinanceOverview();
+  if(sec==='ratios')   fiCalcRatios();
+  if(sec==='revenue')  fiCalcRev();
+  if(sec==='pricing')  renderPricingSliders();
+  if(sec==='ltv')      fiCalcLTV();
+  if(sec==='overhead') fiRenderOH();
+  if(sec==='costs')    fiRenderCosts();
+  if(sec==='balance')  fiRenderBS();
+  if(sec==='cba')      fiRenderCBA();
+}
+
+function fiSaveAll(){
+  // collect ratios inputs
+  ['np','rev','assets','debt','equity','ca','cl','inv','cogs'].forEach(k=>{
+    const el=document.getElementById('fi-r-'+k); if(el) fiState.ratios[k]=el.value;
+  });
+  ['cust','txn','freq','price','gcust','upsell','gfreq','gprice'].forEach(k=>{
+    const el=document.getElementById('fi-rev-'+k); if(el) fiState.rev[k]=el.value;
+  });
+  ['avg','freq','life','margin'].forEach(k=>{
+    const el=document.getElementById('fi-ltv-'+k); if(el) fiState.ltv[k]=el.value;
+  });
+  ['ltv','vcc','fixed','margin'].forEach(k=>{
+    const el=document.getElementById('fi-aac-'+k); if(el) fiState.aac[k]=el.value;
+  });
+  const ohRev=document.getElementById('fi-oh-rev'); if(ohRev) fiState.ohRev=ohRev.value;
+  const ohCash=document.getElementById('fi-oh-cash'); if(ohCash) fiState.ohCash=ohCash.value;
+  const fcUnits=document.getElementById('fi-fc-units'); if(fcUnits) fiState.fcUnits=fcUnits.value;
+  const fcRpu=document.getElementById('fi-fc-rpu'); if(fcRpu) fiState.fcRpu=fcRpu.value;
+  localStorage.setItem('finiq_state', JSON.stringify(fiState));
+  const el=document.getElementById('fi-saved-text');
+  if(el) el.textContent='Saved '+new Date().toLocaleTimeString();
+  toast('💾','Finance IQ saved!');
+}
+
+function fiClearAll(){
+  if(!confirm('Reset all Finance IQ data?')) return;
+  fiState={assets:[],liabs:[],benefits:[],costs:[],overhead:[],fixedcosts:[],ratios:{},rev:{},pp:{},ltv:{},aac:{}};
+  localStorage.removeItem('finiq_state');
+  toast('↺','Finance IQ reset');
+  renderFinanceOverview();
+}
+
+function renderFinanceOverview(){
+  const totalA=fiState.assets.reduce((s,i)=>s+(+i.amt||0),0);
+  const totalL=fiState.liabs.filter(i=>i.type==='Liability').reduce((s,i)=>s+(+i.amt||0),0);
+  const totalE=fiState.liabs.filter(i=>i.type==='Equity').reduce((s,i)=>s+(+i.amt||0),0);
+  const totalB=fiState.benefits.reduce((s,i)=>s+(+i.val||0),0);
+  const totalC=fiState.costs.reduce((s,i)=>s+(+i.val||0),0);
+  const totalOH=fiState.overhead.reduce((s,i)=>s+(+i.amt||0),0);
+  const fixed=fiState.fixedcosts.filter(i=>i.type==='Fixed').reduce((s,i)=>s+(+i.amt||0),0);
+  const variable=fiState.fixedcosts.filter(i=>i.type!=='Fixed').reduce((s,i)=>s+(+i.amt||0),0);
+  const ltvGross=(+fiState.ltv.avg||0)*(+fiState.ltv.freq||0)*(+fiState.ltv.life||0);
+
+  const kpis=[
+    {label:'Total Assets',val:'₹'+totalA.toLocaleString('en-IN'),color:'var(--blue)'},
+    {label:'Net Equity',val:'₹'+totalE.toLocaleString('en-IN'),color:'var(--accent)'},
+    {label:'CBA Net Value',val:'₹'+(totalB-totalC).toLocaleString('en-IN'),color:(totalB-totalC)>=0?'var(--green)':'var(--danger)'},
+    {label:'Gross LTV',val:'₹'+ltvGross.toLocaleString('en-IN'),color:'var(--blue)'},
+    {label:'Monthly OH',val:'₹'+totalOH.toLocaleString('en-IN'),color:'var(--warn)'},
+    {label:'Fixed Costs',val:'₹'+fixed.toLocaleString('en-IN'),color:'var(--blue)'},
+    {label:'Variable Costs',val:'₹'+variable.toLocaleString('en-IN'),color:'var(--accent)'},
+    {label:'Total Costs',val:'₹'+(fixed+variable).toLocaleString('en-IN'),color:'var(--text)'},
+  ];
+  const kr=document.getElementById('fi-kpis-row');
+  if(kr) kr.innerHTML=kpis.map(k=>`<div class="fi-kpi"><div class="fi-kpi-lbl">${k.label}</div><div class="fi-kpi-val" style="color:${k.color}">${k.val}</div></div>`).join('');
+
+  const concepts=[
+    ['⚖️ Balance Sheet','Assets = Liabilities + Equity'],
+    ['📐 Ratios','Profit Margin, Current Ratio, D/E, ROA, Quick Ratio, Inventory Turnover'],
+    ['💰 Cost–Benefit','Net Value = Total Benefits − Total Costs'],
+    ['📈 Revenue','Customers × Avg Transaction × Frequency'],
+    ['🎯 Pricing Power','Brand + Differentiation + Switching Cost + Scarcity + Results'],
+    ['♻️ LTV','Avg Purchase × Frequency × Lifespan × Margin%'],
+    ['🎯 AAC','(LTV − VCC − Fixed) × (1 − Margin%)'],
+    ['🏗️ Overhead','Minimum ongoing costs to keep business running'],
+    ['📦 Fixed vs Variable','Fixed: always incurred · Variable: scales with output'],
+  ];
+  const cl=document.getElementById('fi-concept-list');
+  if(cl) cl.innerHTML=concepts.map(([t,d])=>`<div style="padding:8px 0;border-bottom:1px solid var(--border)"><div style="font-size:12px;font-weight:700">${t}</div><div style="font-size:11px;color:var(--muted);margin-top:2px">${d}</div></div>`).join('');
+
+  const rNP=+fiState.ratios.np||0, rRev=+fiState.ratios.rev||1;
+  const margin=rRev>0?(rNP/rRev*100):0;
+  const rCA=+fiState.ratios.ca||0, rCL=+fiState.ratios.cl||1;
+  const currRatio=rCL>0?rCA/rCL:0;
+  const ppScore=Object.values(fiState.pp||{}).reduce((s,v)=>s+(+v||0),0)/5||0;
+  const hb=document.getElementById('fi-health-bars');
+  if(hb) hb.innerHTML=[
+    ['Profit Margin',margin,20,40,'%'],
+    ['Current Ratio',currRatio*50,50,80,''],
+    ['Pricing Power',ppScore*10,40,70,''],
+  ].map(([n,pct,warn,good,sfx])=>{
+    const c=pct>=good?'var(--accent)':pct>=warn?'var(--warn)':'var(--danger)';
+    return`<div class="fi-hbar-wrap"><div class="fi-hbar-lbl"><span>${n}</span><span style="color:${c};font-weight:700">${Math.round(pct)}${sfx}</span></div><div class="fi-hbar"><div class="fi-hbar-fill" style="width:${Math.min(100,pct)}%;background:${c}"></div></div></div>`;
+  }).join('');
+}
+
+// BALANCE SHEET
+function fiAddEntry(type){
+  const nameEl=document.getElementById(`fi-${type==='asset'?'asset':'liab'}-name`);
+  const amtEl =document.getElementById(`fi-${type==='asset'?'asset':'liab'}-amt`);
+  const tEl   =document.getElementById(`fi-${type==='asset'?'asset':'liab'}-type`);
+  const name=nameEl.value.trim(), amt=+amtEl.value||0, t=tEl.value;
+  if(!name||!amt){ toast('⚠️','Enter name and amount'); return; }
+  if(type==='asset') fiState.assets.push({name,amt,t});
+  else fiState.liabs.push({name,amt,type:t});
+  nameEl.value=''; amtEl.value='';
+  fiRenderBS(); fiSaveAll();
+}
+function fiRenderBS(){
+  const ab=document.getElementById('fi-assets-body');
+  const lb=document.getElementById('fi-liabs-body');
+  if(ab) ab.innerHTML=fiState.assets.map((r,i)=>`<tr><td>${r.name}</td><td><span class="fi-pill fi-pill-b">${r.t}</span></td><td>₹${(+r.amt).toLocaleString('en-IN')}</td><td><button class="fi-del" onclick="fiState.assets.splice(${i},1);fiRenderBS();fiSaveAll()">✕</button></td></tr>`).join('');
+  if(lb) lb.innerHTML=fiState.liabs.map((r,i)=>`<tr><td>${r.name}</td><td><span class="fi-pill ${r.type==='Equity'?'fi-pill-g':'fi-pill-r'}">${r.type}</span></td><td>₹${(+r.amt).toLocaleString('en-IN')}</td><td><button class="fi-del" onclick="fiState.liabs.splice(${i},1);fiRenderBS();fiSaveAll()">✕</button></td></tr>`).join('');
+  const tA=fiState.assets.reduce((s,r)=>s+(+r.amt||0),0);
+  const tL=fiState.liabs.reduce((s,r)=>s+(+r.amt||0),0);
+  const ta=document.getElementById('fi-total-assets'); if(ta) ta.textContent='₹'+tA.toLocaleString('en-IN');
+  const tl=document.getElementById('fi-total-liabs');  if(tl) tl.textContent='₹'+tL.toLocaleString('en-IN');
+  const bsa=document.getElementById('fi-bs-a');  if(bsa) bsa.textContent='₹'+tA.toLocaleString('en-IN');
+  const bsl=document.getElementById('fi-bs-le'); if(bsl) bsl.textContent='₹'+tL.toLocaleString('en-IN');
+  const diff=Math.abs(tA-tL);
+  const st=document.getElementById('fi-bs-status');
+  if(st) st.innerHTML=tA===tL?'<span class="fi-pill fi-pill-g">✅ Balanced</span>':`<span class="fi-pill fi-pill-r">⚠ Off by ₹${diff.toLocaleString('en-IN')}</span>`;
+}
+
+// RATIOS
+function fiCalcRatios(){
+  const g=id=>+(document.getElementById(id)?.value)||0;
+  const np=g('fi-r-np'),rev=g('fi-r-rev'),assets=g('fi-r-assets'),debt=g('fi-r-debt'),equity=g('fi-r-equity'),ca=g('fi-r-ca'),cl=g('fi-r-cl'),inv=g('fi-r-inv'),cogs=g('fi-r-cogs');
+  const ratios=[
+    {name:'Profit Margin',formula:'Net Profit ÷ Revenue × 100',val:rev>0?(np/rev*100).toFixed(1)+'%':'—',good:v=>parseFloat(v)>=15,warn:v=>parseFloat(v)>=5},
+    {name:'Return on Assets',formula:'Net Profit ÷ Total Assets × 100',val:assets>0?(np/assets*100).toFixed(1)+'%':'—',good:v=>parseFloat(v)>=10,warn:v=>parseFloat(v)>=5},
+    {name:'Debt-to-Equity',formula:'Total Debt ÷ Owner Equity',val:equity>0?(debt/equity).toFixed(2):'—',good:v=>parseFloat(v)<=1,warn:v=>parseFloat(v)<=2},
+    {name:'Current Ratio',formula:'Current Assets ÷ Current Liabilities',val:cl>0?(ca/cl).toFixed(2):'—',good:v=>parseFloat(v)>=2,warn:v=>parseFloat(v)>=1},
+    {name:'Quick Ratio',formula:'(Current Assets − Inventory) ÷ Current Liabilities',val:cl>0?((ca-inv)/cl).toFixed(2):'—',good:v=>parseFloat(v)>=1,warn:v=>parseFloat(v)>=0.5},
+    {name:'Inventory Turnover',formula:'COGS ÷ Inventory',val:inv>0?(cogs/inv).toFixed(2):'—',good:v=>parseFloat(v)>=6,warn:v=>parseFloat(v)>=3},
+  ];
+  const grid=document.getElementById('fi-ratios-grid');
+  if(!grid) return;
+  grid.innerHTML=ratios.map(r=>{
+    const isGood=r.val!=='—'&&r.good(r.val), isWarn=r.val!=='—'&&r.warn(r.val);
+    const c=isGood?'var(--accent)':isWarn?'var(--warn)':'var(--danger)';
+    return`<div class="fi-ratio-card"><div class="fi-ratio-name">${r.name}</div><div class="fi-ratio-formula">${r.formula}</div><div class="fi-ratio-val" style="color:${r.val==='—'?'var(--muted)':c}">${r.val}</div></div>`;
+  }).join('');
+}
+
+// COST-BENEFIT
+function fiAddCBA(type){
+  const desc=document.getElementById(`fi-${type==='benefit'?'ben':'cost'}-desc`).value.trim();
+  const val=+document.getElementById(`fi-${type==='benefit'?'ben':'cost'}-val`).value||0;
+  const cat=document.getElementById(`fi-${type==='benefit'?'ben':'cost'}-cat`).value;
+  if(!desc||!val){ toast('⚠️','Enter description and value'); return; }
+  if(type==='benefit') fiState.benefits.push({desc,val,cat});
+  else fiState.costs.push({desc,val,cat});
+  document.getElementById(`fi-${type==='benefit'?'ben':'cost'}-desc`).value='';
+  document.getElementById(`fi-${type==='benefit'?'ben':'cost'}-val`).value='';
+  fiRenderCBA(); fiSaveAll();
+}
+function fiRenderCBA(){
+  const bl=document.getElementById('fi-benefits-list');
+  const cl=document.getElementById('fi-costs-list');
+  if(bl) bl.innerHTML=fiState.benefits.map((r,i)=>`<div class="fi-list-item"><div style="flex:1"><div style="font-size:12px;font-weight:600">${r.desc}</div><div style="font-size:10px;color:var(--muted)">${r.cat}</div></div><div style="color:var(--accent);font-family:monospace;font-size:13px;font-weight:700">₹${(+r.val).toLocaleString('en-IN')}</div><button class="fi-del" onclick="fiState.benefits.splice(${i},1);fiRenderCBA();fiSaveAll()">✕</button></div>`).join('');
+  if(cl) cl.innerHTML=fiState.costs.map((r,i)=>`<div class="fi-list-item"><div style="flex:1"><div style="font-size:12px;font-weight:600">${r.desc}</div><div style="font-size:10px;color:var(--muted)">${r.cat}</div></div><div style="color:var(--danger);font-family:monospace;font-size:13px;font-weight:700">₹${(+r.val).toLocaleString('en-IN')}</div><button class="fi-del" onclick="fiState.costs.splice(${i},1);fiRenderCBA();fiSaveAll()">✕</button></div>`).join('');
+  const tB=fiState.benefits.reduce((s,r)=>s+(+r.val||0),0);
+  const tC=fiState.costs.reduce((s,r)=>s+(+r.val||0),0);
+  const net=tB-tC, ratio=tC>0?(tB/tC).toFixed(2):tB>0?'∞':'—';
+  const verdict=net>0&&+ratio>=2?'✅ Strong GO — benefits clearly outweigh costs':net>0?'⚠️ Marginal — proceed with caution':'❌ Not justified — costs exceed benefits';
+  const rc=document.getElementById('fi-cba-result');
+  if(rc) rc.innerHTML=`
+    <div class="fi-result-item"><div class="fi-result-lbl">Total Benefits</div><div class="fi-result-val" style="color:var(--accent)">₹${tB.toLocaleString('en-IN')}</div></div>
+    <div class="fi-result-item"><div class="fi-result-lbl">Total Costs</div><div class="fi-result-val" style="color:var(--danger)">₹${tC.toLocaleString('en-IN')}</div></div>
+    <div class="fi-result-item"><div class="fi-result-lbl">Net Value</div><div class="fi-result-val" style="color:${net>=0?'var(--accent)':'var(--danger)'}">₹${net.toLocaleString('en-IN')}</div></div>
+    <div class="fi-result-item"><div class="fi-result-lbl">B/C Ratio</div><div class="fi-result-val" style="color:var(--blue)">${ratio}</div></div>
+    <div style="width:100%;margin-top:10px;padding:10px 14px;background:var(--surface2);border-radius:8px;font-size:13px;font-weight:600">${verdict}</div>`;
+}
+
+// REVENUE
+function fiCalcRev(){
+  const g=id=>+(document.getElementById(id)?.value)||0;
+  const cust=g('fi-rev-cust'),txn=g('fi-rev-txn'),freq=g('fi-rev-freq');
+  const gcust=g('fi-rev-gcust'),upsell=g('fi-rev-upsell'),gfreq=g('fi-rev-gfreq'),gprice=g('fi-rev-gprice');
+  const current=cust*txn*freq;
+  const nCust=cust*(1+gcust/100), nTxn=txn*(1+upsell/100), nFreq=freq*(1+gfreq/100), nPrice=txn*(1+gprice/100);
+  const projected=nCust*nTxn*nFreq;
+  const uplift=projected-current;
+  const rc=document.getElementById('fi-rev-current'); if(rc) rc.textContent='₹'+Math.round(current).toLocaleString('en-IN');
+  const rp=document.getElementById('fi-rev-projected'); if(rp) rp.textContent='₹'+Math.round(projected).toLocaleString('en-IN');
+  const ru=document.getElementById('fi-rev-uplift'); if(ru) ru.textContent=uplift>0?`↑ ₹${Math.round(uplift).toLocaleString('en-IN')} uplift`:'Fill in growth % above';
+  const lg=document.getElementById('fi-levers-grid');
+  if(lg) lg.innerHTML=[
+    ['New Customers',cust*(gcust/100)*txn*freq,'var(--accent)'],
+    ['Upsell / Avg Txn',cust*txn*(upsell/100)*freq,'var(--blue)'],
+    ['Frequency',cust*txn*freq*(gfreq/100),'var(--warn)'],
+    ['Price Increase',cust*(nPrice-txn)*freq,'var(--danger)'],
+  ].map(([l,v,c])=>`<div class="fi-card"><div style="font-size:12px;color:var(--muted);margin-bottom:4px">${l}</div><div style="font-family:'DM Mono',monospace;font-size:20px;font-weight:700;color:${c}">₹${Math.round(v).toLocaleString('en-IN')}</div><div style="font-size:10px;color:var(--muted)">additional revenue / year</div></div>`).join('');
+}
+
+// PRICING POWER
+const ppDrivers=['Brand Trust & Reputation','Product Differentiation','Ecosystem / Switching Cost','Scarcity / Exclusivity','Track Record / Results'];
+function renderPricingSliders(){
+  const c=document.getElementById('fi-pricing-sliders'); if(!c) return;
+  c.innerHTML=ppDrivers.map((d,i)=>{
+    const v=fiState.pp[i]||5;
+    return`<div style="margin-bottom:14px"><div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:4px"><span>${d}</span><strong id="ppv-${i}">${v}/10</strong></div>
+    <input type="range" class="fi-range" min="1" max="10" value="${v}" oninput="fiState.pp[${i}]=this.value;document.getElementById('ppv-${i}').textContent=this.value+'/10';fiCalcPP()"></div>`;
+  }).join('');
+  fiCalcPP();
+}
+function fiCalcPP(){
+  const total=ppDrivers.reduce((s,_,i)=>s+(+fiState.pp[i]||5),0);
+  const avg=(total/ppDrivers.length).toFixed(1);
+  const el=document.getElementById('fi-pp-score'); if(el) el.textContent=avg+' / 10';
+  const verdicts=['Very weak — compete on price only','Weak — limited pricing power','Moderate — some ability to raise prices','Strong — can raise prices with low churn','Very strong — premium brand positioning'];
+  const vd=document.getElementById('fi-pp-verdict'); if(vd) vd.textContent=verdicts[Math.min(4,Math.floor(avg/2))];
+}
+function fiCalcPS(){
+  const g=id=>+(document.getElementById(id)?.value)||0;
+  const price=g('fi-ps-price'),cust=g('fi-ps-cust'),inc=g('fi-ps-inc'),loss=g('fi-ps-loss');
+  const newPrice=price*(1+inc/100), newCust=cust*(1-loss/100);
+  const before=price*cust, after=newPrice*newCust, diff=after-before;
+  const rc=document.getElementById('fi-ps-result'); if(!rc) return;
+  rc.innerHTML=`
+    <div class="fi-result-item"><div class="fi-result-lbl">Current Revenue</div><div class="fi-result-val" style="color:var(--muted)">₹${Math.round(before).toLocaleString('en-IN')}</div></div>
+    <div class="fi-result-item"><div class="fi-result-lbl">New Revenue</div><div class="fi-result-val" style="color:${diff>=0?'var(--accent)':'var(--danger)'}">₹${Math.round(after).toLocaleString('en-IN')}</div></div>
+    <div class="fi-result-item"><div class="fi-result-lbl">Net Change</div><div class="fi-result-val" style="color:${diff>=0?'var(--accent)':'var(--danger'}">${diff>=0?'+':''}₹${Math.round(diff).toLocaleString('en-IN')}</div></div>`;
+}
+
+// LTV & AAC
+function fiCalcLTV(){
+  const g=id=>+(document.getElementById(id)?.value)||0;
+  const avg=g('fi-ltv-avg'),freq=g('fi-ltv-freq'),life=g('fi-ltv-life'),margin=g('fi-ltv-margin');
+  const gross=avg*freq*life, profit=gross*(margin/100);
+  const lg=document.getElementById('fi-ltv-gross'); if(lg) lg.textContent='₹'+Math.round(gross).toLocaleString('en-IN');
+  const lp=document.getElementById('fi-ltv-profit'); if(lp) lp.textContent='₹'+Math.round(profit).toLocaleString('en-IN');
+  const al=document.getElementById('fi-aac-ltv'); if(al&&!al.value) al.value=Math.round(gross);
+  fiCalcAAC(); fiCalcCAC();
+}
+function fiCalcAAC(){
+  const g=id=>+(document.getElementById(id)?.value)||0;
+  const ltv=g('fi-aac-ltv'),vcc=g('fi-aac-vcc'),fixed=g('fi-aac-fixed'),margin=g('fi-aac-margin');
+  const aac=(ltv-vcc-fixed)*(1-margin/100);
+  const el=document.getElementById('fi-aac-result'); if(el) el.textContent='₹'+Math.max(0,Math.round(aac)).toLocaleString('en-IN');
+}
+function fiCalcCAC(){
+  const cac=+(document.getElementById('fi-cac')?.value)||0;
+  const ltv=+(document.getElementById('fi-aac-ltv')?.value)||+(document.getElementById('fi-ltv-avg')?.value||0)*(+(document.getElementById('fi-ltv-freq')?.value||0))*(+(document.getElementById('fi-ltv-life')?.value||0));
+  const ratio=cac>0?(ltv/cac).toFixed(1):0;
+  const c=ratio>=5?'var(--accent)':ratio>=3?'var(--warn)':'var(--danger)';
+  const verdict=ratio>=5?'✅ Excellent (5:1+)':ratio>=3?'✅ Healthy (3:1+)':ratio>=1?'⚠️ Tight — improve retention':'❌ Losing money on acquisition';
+  const el=document.getElementById('fi-ltvcac-result');
+  if(el) el.innerHTML=`<div class="fi-result" style="margin-top:10px"><div class="fi-result-row"><div class="fi-result-item"><div class="fi-result-lbl">LTV : CAC Ratio</div><div class="fi-result-val" style="color:${c};font-size:28px">${ratio} : 1</div></div><div class="fi-result-item"><div class="fi-result-lbl">Verdict</div><div style="margin-top:6px;font-size:13px;font-weight:600">${verdict}</div></div></div></div>`;
+}
+
+// OVERHEAD
+function fiAddOH(){
+  const name=document.getElementById('fi-oh-name').value.trim();
+  const amt=+document.getElementById('fi-oh-amt').value||0;
+  const cat=document.getElementById('fi-oh-cat').value;
+  const ess=document.getElementById('fi-oh-ess').value;
+  if(!name||!amt){ toast('⚠️','Enter name and amount'); return; }
+  fiState.overhead.push({name,amt,cat,ess});
+  document.getElementById('fi-oh-name').value='';
+  document.getElementById('fi-oh-amt').value='';
+  fiRenderOH(); fiSaveAll();
+}
+function fiRenderOH(){
+  const total=fiState.overhead.reduce((s,r)=>s+(+r.amt||0),0);
+  const om=document.getElementById('fi-oh-monthly'); if(om) om.textContent='₹'+total.toLocaleString('en-IN');
+  const oa=document.getElementById('fi-oh-annual');  if(oa) oa.textContent='₹'+(total*12).toLocaleString('en-IN');
+  const ol=document.getElementById('fi-oh-list');
+  if(ol) ol.innerHTML=fiState.overhead.map((r,i)=>`<div class="fi-list-item"><div style="flex:1"><div style="font-size:12px;font-weight:600">${r.name}</div><div style="font-size:10px;color:var(--muted)">${r.cat} · ${r.ess}</div></div><div style="color:var(--danger);font-family:monospace;font-size:13px;font-weight:700">₹${(+r.amt).toLocaleString('en-IN')}</div><button class="fi-del" onclick="fiState.overhead.splice(${i},1);fiRenderOH();fiSaveAll()">✕</button></div>`).join('');
+  fiCalcBurn();
+}
+function fiCalcBurn(){
+  const total=fiState.overhead.reduce((s,r)=>s+(+r.amt||0),0);
+  const rev=+(document.getElementById('fi-oh-rev')?.value)||0;
+  const cash=+(document.getElementById('fi-oh-cash')?.value)||0;
+  const surplus=rev-total;
+  const runway=total>0&&surplus<0?Math.floor(cash/total):null;
+  const br=document.getElementById('fi-burn-result');
+  if(br) br.innerHTML=`<div class="fi-result" style="margin-top:10px"><div class="fi-result-row">
+    <div class="fi-result-item"><div class="fi-result-lbl">Monthly Surplus/Deficit</div><div class="fi-result-val" style="color:${surplus>=0?'var(--accent)':'var(--danger)'}">₹${surplus.toLocaleString('en-IN')}</div></div>
+    ${runway!==null?`<div class="fi-result-item"><div class="fi-result-lbl">Cash Runway</div><div class="fi-result-val" style="color:var(--warn)">${runway} months</div></div>`:''}
+  </div></div>`;
+}
+
+// FIXED VS VARIABLE
+function fiAddCost(){
+  const name=document.getElementById('fi-fc-name').value.trim();
+  const amt=+document.getElementById('fi-fc-amt').value||0;
+  const type=document.getElementById('fi-fc-type').value;
+  const val=document.getElementById('fi-fc-val').value;
+  if(!name||!amt){ toast('⚠️','Enter name and amount'); return; }
+  fiState.fixedcosts.push({name,amt,type,val});
+  document.getElementById('fi-fc-name').value='';
+  document.getElementById('fi-fc-amt').value='';
+  fiRenderCosts(); fiSaveAll();
+}
+function fiRenderCosts(){
+  const fixed=fiState.fixedcosts.filter(r=>r.type==='Fixed').reduce((s,r)=>s+(+r.amt||0),0);
+  const variable=fiState.fixedcosts.filter(r=>r.type!=='Fixed').reduce((s,r)=>s+(+r.amt||0),0);
+  const total=fixed+variable;
+  const ff=document.getElementById('fi-fc-fixed');   if(ff) ff.textContent='₹'+fixed.toLocaleString('en-IN');
+  const fv=document.getElementById('fi-fc-var');     if(fv) fv.textContent='₹'+variable.toLocaleString('en-IN');
+  const ft=document.getElementById('fi-fc-total');   if(ft) ft.textContent='₹'+total.toLocaleString('en-IN');
+  const tb=document.getElementById('fi-costs-body');
+  if(tb) tb.innerHTML=fiState.fixedcosts.map((r,i)=>`<tr><td>${r.name}</td><td><span class="${r.type==='Fixed'?'fi-tag-fixed':'fi-tag-var'}">${r.type}</span></td><td>₹${(+r.amt).toLocaleString('en-IN')}</td><td style="font-size:11px;color:var(--muted)">${r.val}</td><td><button class="fi-del" onclick="fiState.fixedcosts.splice(${i},1);fiRenderCosts();fiSaveAll()">✕</button></td></tr>`).join('');
+  const vd=document.getElementById('fi-value-destroy');
+  const cutters=fiState.fixedcosts.filter(r=>r.val==='No — consider cutting');
+  if(vd) vd.innerHTML=cutters.length?cutters.map(r=>`<div style="padding:6px 10px;background:color-mix(in srgb,var(--danger) 10%,transparent);border:1px solid color-mix(in srgb,var(--danger) 30%,transparent);border-radius:6px;margin-bottom:5px;font-size:12px">⚠️ ${r.name} — ₹${(+r.amt).toLocaleString('en-IN')}/mo</div>`).join(''):'<div style="font-size:12px;color:var(--muted)">No value-destroying costs identified ✅</div>';
+  fiCalcBE();
+}
+function fiCalcBE(){
+  const fixed=fiState.fixedcosts.filter(r=>r.type==='Fixed').reduce((s,r)=>s+(+r.amt||0),0);
+  const variable=fiState.fixedcosts.filter(r=>r.type==='Variable').reduce((s,r)=>s+(+r.amt||0),0);
+  const units=+(document.getElementById('fi-fc-units')?.value)||0;
+  const rpu=+(document.getElementById('fi-fc-rpu')?.value)||0;
+  const varPerUnit=units>0?variable/units:0;
+  const contrib=rpu-varPerUnit;
+  const be=contrib>0?Math.ceil(fixed/contrib):null;
+  const br=document.getElementById('fi-be-result');
+  if(br) br.innerHTML=be!==null?`<div class="fi-result" style="margin-top:10px"><div class="fi-result-row">
+    <div class="fi-result-item"><div class="fi-result-lbl">Contribution Margin</div><div class="fi-result-val" style="color:var(--accent)">₹${contrib.toFixed(2)}/unit</div></div>
+    <div class="fi-result-item"><div class="fi-result-lbl">Break-even Units</div><div class="fi-result-val" style="color:var(--warn)">${be} units</div></div>
+  </div></div>`:'';
+}
+
+function renderFinanceOverview(){ renderFinanceOverview_inner(); }
+// alias fix
+function renderFinanceOverview_inner(){
+  const totalA=fiState.assets.reduce((s,i)=>s+(+i.amt||0),0);
+  const totalE=fiState.liabs.filter(i=>i.type==='Equity').reduce((s,i)=>s+(+i.amt||0),0);
+  const totalB=fiState.benefits.reduce((s,i)=>s+(+i.val||0),0);
+  const totalC=fiState.costs.reduce((s,i)=>s+(+i.val||0),0);
+  const totalOH=fiState.overhead.reduce((s,i)=>s+(+i.amt||0),0);
+  const fixed=fiState.fixedcosts.filter(i=>i.type==='Fixed').reduce((s,i)=>s+(+i.amt||0),0);
+  const variable=fiState.fixedcosts.filter(i=>i.type!=='Fixed').reduce((s,i)=>s+(+i.amt||0),0);
+  const ltvGross=(+fiState.ltv.avg||0)*(+fiState.ltv.freq||0)*(+fiState.ltv.life||0);
+  const kpis=[
+    {label:'Total Assets',val:'₹'+totalA.toLocaleString('en-IN'),color:'var(--blue)'},
+    {label:'Net Equity',val:'₹'+totalE.toLocaleString('en-IN'),color:'var(--accent)'},
+    {label:'CBA Net Value',val:'₹'+(totalB-totalC).toLocaleString('en-IN'),color:(totalB-totalC)>=0?'var(--green)':'var(--danger)'},
+    {label:'Gross LTV',val:'₹'+ltvGross.toLocaleString('en-IN'),color:'var(--blue)'},
+    {label:'Monthly OH',val:'₹'+totalOH.toLocaleString('en-IN'),color:'var(--warn)'},
+    {label:'Fixed Costs',val:'₹'+fixed.toLocaleString('en-IN'),color:'var(--blue)'},
+    {label:'Variable Costs',val:'₹'+variable.toLocaleString('en-IN'),color:'var(--accent)'},
+    {label:'Total Costs',val:'₹'+(fixed+variable).toLocaleString('en-IN'),color:'var(--text)'},
+  ];
+  const kr=document.getElementById('fi-kpis-row');
+  if(kr) kr.innerHTML=kpis.map(k=>`<div class="fi-kpi"><div class="fi-kpi-lbl">${k.label}</div><div class="fi-kpi-val" style="color:${k.color}">${k.val}</div></div>`).join('');
+  const concepts=[
+    ['⚖️ Balance Sheet','Assets = Liabilities + Equity'],
+    ['📐 Ratios','Profit Margin, Current Ratio, D/E, ROA'],
+    ['💰 Cost–Benefit','Net Value = Total Benefits − Total Costs'],
+    ['📈 Revenue','Customers × Avg Transaction × Frequency'],
+    ['🎯 Pricing Power','Brand + Differentiation + Switching Cost + Scarcity'],
+    ['♻️ LTV','Avg Purchase × Frequency × Lifespan × Margin%'],
+    ['🎯 AAC','(LTV − VCC − Fixed) × (1 − Margin%)'],
+    ['🏗️ Overhead','Minimum ongoing costs to keep running'],
+    ['📦 Fixed vs Variable','Fixed: always incurred · Variable: scales with output'],
+  ];
+  const cl=document.getElementById('fi-concept-list');
+  if(cl) cl.innerHTML=concepts.map(([t,d])=>`<div style="padding:8px 0;border-bottom:1px solid var(--border)"><div style="font-size:12px;font-weight:700">${t}</div><div style="font-size:11px;color:var(--muted);margin-top:2px">${d}</div></div>`).join('');
+  const rNP=+fiState.ratios.np||0, rRev=+fiState.ratios.rev||1;
+  const margin=rRev>0?(rNP/rRev*100):0;
+  const rCA=+fiState.ratios.ca||0, rCL=+fiState.ratios.cl||1;
+  const currRatio=rCL>0?rCA/rCL:0;
+  const ppScore=Object.values(fiState.pp||{}).reduce((s,v)=>s+(+v||0),0)/5||0;
+  const hb=document.getElementById('fi-health-bars');
+  if(hb) hb.innerHTML=[
+    ['Profit Margin',margin,20,40,'%'],
+    ['Current Ratio',currRatio*50,50,80,''],
+    ['Pricing Power',ppScore*10,40,70,''],
+  ].map(([n,pct,warn,good])=>{
+    const c=pct>=good?'var(--accent)':pct>=warn?'var(--warn)':'var(--danger)';
+    return`<div class="fi-hbar-wrap"><div class="fi-hbar-lbl"><span>${n}</span><span style="color:${c};font-weight:700">${Math.round(pct)}</span></div><div class="fi-hbar"><div class="fi-hbar-fill" style="width:${Math.min(100,pct)}%;background:${c}"></div></div></div>`;
+  }).join('');
+}
+
 async function init() {
   const lastSync = localStorage.getItem('sf_last_sync');
   if (lastSync) document.getElementById('last-sync-text').textContent = `Last sync: ${new Date(lastSync).toLocaleTimeString()}`;
