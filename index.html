@@ -1684,18 +1684,20 @@ function processBarcodeScan(mode) {
   const inputEl = document.getElementById(mode+'-barcode-input');
   const qtyEl   = document.getElementById(mode+'-qty-input');
   const raw     = inputEl.value.trim();
-  const barcode = raw.toLowerCase();
+  // Strip ALL non-alphanumeric chars so spaces/dashes/invisible chars never cause mismatch
+  const norm    = v => (v||'').replace(/[^a-z0-9]/gi,'').toLowerCase();
+  const barcode = norm(raw);
   const qty     = parseInt(qtyEl.value) || 1;
 
   document.getElementById(mode+'-result-card').classList.remove('show');
   document.getElementById(mode+'-not-found').classList.remove('show');
   if(mode==='deduct') document.getElementById('deduct-warn').style.display='none';
 
-  if(!barcode){ toast('⚠️','Please enter or scan a barcode'); inputEl.focus(); return; }
-  if(qty < 1){ toast('⚠️','Quantity must be at least 1'); return; }
+  if(!barcode){ toast('⚠️','Please enter or scan a barcode'); inputEl.focus(); return false; }
+  if(qty < 1){ toast('⚠️','Quantity must be at least 1'); return false; }
 
-  // ── 1. Try matching a VARIANT first (case-insensitive) ──
-  let matchedVariant = null, matchedVarParent = null, matchedVarIdx = -1, matchedVarPid;
+  // ── 1. Try variant first ──
+  let matchedVariant=null, matchedVarParent=null, matchedVarIdx=-1, matchedVarPid;
   const varMatch = findVariantByBarcode(barcode);
   if(varMatch){
     matchedVarPid    = varMatch.pid;
@@ -1704,68 +1706,65 @@ function processBarcodeScan(mode) {
     matchedVarParent = items.find(i=>i.id==varMatch.pid);
   }
 
-  // ── 2. Fallback: match parent item — pass 1 exact, pass 2 partial ──
+  // ── 2. Match parent — 3 passes ──
   let item = matchedVarParent;
   if(!item){
-    // Pass 1: exact case-insensitive match on barcode or SKU
-    item = items.find(i =>
-      ((i.barcode||'').trim().toLowerCase() === barcode) ||
-      ((i.sku||'').trim().toLowerCase()     === barcode)
-    );
-    // Pass 2: partial/contains match (handles QR prefixes like "PREFIX:SKU-001")
-    if(!item){
-      item = items.find(i => {
-        const b = (i.barcode||'').trim().toLowerCase();
-        const s = (i.sku||'').trim().toLowerCase();
-        return (b && (b.includes(barcode) || barcode.includes(b))) ||
-               (s && (s.includes(barcode) || barcode.includes(s)));
-      });
-    }
+    // Pass 1: normalised barcode field exact match
+    item = items.find(i => norm(i.barcode) === barcode);
+    // Pass 2: normalised SKU exact match
+    if(!item) item = items.find(i => norm(i.sku) === barcode);
+    // Pass 3: partial contains (QR prefix wrapping, extra chars)
+    if(!item) item = items.find(i => {
+      const b = norm(i.barcode);
+      const s = norm(i.sku);
+      return (b && (b.includes(barcode) || barcode.includes(b))) ||
+             (s && (s.includes(barcode) || barcode.includes(s)));
+    });
   }
 
+  // ── Not found — show debug info ──
   if(!item && !matchedVariant){
     lastNotFoundBarcode = raw;
+    const stored = items.slice(0,5).map(i=>`${i.name}: "${i.barcode||''}"`).join(' | ');
     document.getElementById(mode+'-not-found').classList.add('show');
-    document.getElementById(mode+'-not-found-code').textContent = 'Scanned: "' + raw + '"';
-    toast('❌','Barcode not found: "' + raw + '"');
+    document.getElementById(mode+'-not-found-code').innerHTML =
+      `Scanned: <strong>"${raw}"</strong> · Items loaded: ${items.length}<br>
+       <span style="font-size:10px;color:var(--muted)">First 5 barcodes: ${stored}</span>`;
+    toast('❌', `Not found: "${raw}" · ${items.length} items in memory`);
     inputEl.value=''; inputEl.focus();
     return false;
   }
 
   // ── 3. Apply stock change ──
-  const before = item.stock;
-  let variantBefore = matchedVariant ? matchedVariant.stock : null;
-  let resultLabel = item.name;
+  const before    = item.stock;
   let variantNote = '';
+  const isAdd     = mode === 'add';
 
-  if (mode === 'add') {
+  if(isAdd){
     item.stock += qty;
-    if (matchedVariant) {
+    if(matchedVariant){
       matchedVariant.stock += qty;
-      const comboName = matchedVariant.labels ? matchedVariant.labels.join('/') : (matchedVariant.value||'');
-      variantNote = ` (${comboName} +${qty})`;
+      variantNote = ` (${(matchedVariant.labels||[matchedVariant.value||'']).join('/')} +${qty})`;
     }
   } else {
-    if (qty > item.stock) {
+    if(qty > item.stock){
       document.getElementById('deduct-warn').style.display='block';
       document.getElementById('deduct-warn-msg').textContent = `Only ${item.stock} in stock, cannot deduct ${qty}.`;
       inputEl.value=''; inputEl.focus();
-      return;
+      return false;
     }
     item.stock -= qty;
-    if (matchedVariant) {
-      const varStock = matchedVariant.stock;
-      matchedVariant.stock = Math.max(0, varStock - qty);
-      const comboName = matchedVariant.labels ? matchedVariant.labels.join('/') : (matchedVariant.value||'');
-      variantNote = ` (${comboName} -${qty})`;
+    if(matchedVariant){
+      matchedVariant.stock = Math.max(0, matchedVariant.stock - qty);
+      variantNote = ` (${(matchedVariant.labels||[matchedVariant.value||'']).join('/')} -${qty})`;
     }
   }
 
   const after = item.stock;
 
-  // ── 4. Update variant in variants object ──
-  if (matchedVariant && matchedVarPid !== undefined) {
-    const vData = variants[matchedVarPid];
+  // ── 4. Update variant storage ──
+  if(matchedVariant && matchedVarPid !== undefined){
+    const vData    = variants[matchedVarPid];
     const comboArr = vData.combos || vData.attrs;
     comboArr[matchedVarIdx] = matchedVariant;
     localStorage.setItem('sf_variants', JSON.stringify(variants));
@@ -1773,48 +1772,39 @@ function processBarcodeScan(mode) {
   }
 
   // ── 5. Show result card ──
-  const isAdd = mode === 'add';
   document.getElementById(mode+'-result-name').textContent = item.name + variantNote;
-  document.getElementById(mode+'-result-sku').textContent  = item.sku + (item.barcode?' · '+item.barcode:'') + (matchedVariant?' → Variant: '+matchedVariant.value:'');
-  document.getElementById(mode+'-before').textContent = before;
-  document.getElementById(mode+'-delta').textContent  = (isAdd?'+':'-')+qty;
-  document.getElementById(mode+'-after').textContent  = after;
+  document.getElementById(mode+'-result-sku').textContent  = item.sku + (item.barcode?' · '+item.barcode:'');
+  document.getElementById(mode+'-before').textContent      = before;
+  document.getElementById(mode+'-delta').textContent       = (isAdd?'+':'-')+qty;
+  document.getElementById(mode+'-after').textContent       = after;
   if(!isAdd) document.getElementById('deduct-after').style.color = after <= item.reorderPoint ? 'var(--danger)' : 'var(--accent)';
   document.getElementById(mode+'-result-card').classList.add('show');
 
-  // ── 6. Low/out stock warning ──
+  // ── 6. Low/out warning on deduct ──
   if(!isAdd){
     if(after === 0){
       document.getElementById('deduct-warn').style.display='block';
       document.getElementById('deduct-warn-msg').textContent = `${item.name} is now OUT OF STOCK!`;
     } else if(after <= item.reorderPoint){
       document.getElementById('deduct-warn').style.display='block';
-      document.getElementById('deduct-warn-msg').textContent = `${item.name} is now low (${after} left, reorder point: ${item.reorderPoint})`;
+      document.getElementById('deduct-warn-msg').textContent = `${item.name} is low — ${after} left (reorder at ${item.reorderPoint})`;
     }
   }
 
-  // ── 7. Build scan log entry ──
+  // ── 7. Log + sync ──
   const scanLog = {
-    timestamp : new Date().toISOString(),
-    mode,
-    name     : item.name + (matchedVariant?' ['+matchedVariant.value+']':''),
-    sku      : item.sku + (matchedVariant?matchedVariant.skuSuffix:''),
-    barcode  : barcode,
-    qty,
-    before,
-    after,
-    variantValue : matchedVariant ? (matchedVariant.labels ? matchedVariant.labels.join(' / ') : (matchedVariant.value||'')) : '',
-    parentSku    : item.sku
+    timestamp: new Date().toISOString(), mode,
+    name: item.name+(matchedVariant?' ['+matchedVariant.value+']':''),
+    sku: item.sku, barcode: raw, qty, before, after,
+    variantValue: matchedVariant?(matchedVariant.labels||[matchedVariant.value||'']).join(' / '):'',
+    parentSku: item.sku
   };
 
   addToScanHistory(mode, item, qty, before, after, matchedVariant);
-
-  // Big success notification
-  const actionLabel = isAdd ? `+${qty} added` : `-${qty} deducted`;
-  toast(isAdd ? '✅' : '📤', `${actionLabel} · ${item.name}${variantNote} · Stock: ${before} → ${after}`);
+  toast(isAdd?'✅':'📤', `${isAdd?'+':'-'}${qty} · ${item.name}${variantNote} · Stock: ${before} → ${after}`);
 
   inputEl.value = '';
-  qtyEl.value = 1;
+  qtyEl.value   = 1;
   inputEl.focus();
   render();
   syncToSheet(scanLog);
@@ -2930,13 +2920,13 @@ function deleteVariant(pid){
 }
 
 function findVariantByBarcode(barcode){
-  const b = (barcode||'').trim().toLowerCase();
+  // barcode already normalised (alphanumeric lowercase) by caller
   for(const [pid,vData] of Object.entries(variants)){
     const combos=vData.combos||vData.attrs||[];
     const idx=combos.findIndex(c=>{
-      const cb=(c.barcode||'').trim().toLowerCase();
-      const cs=(c.sku||'').trim().toLowerCase();
-      return (cb&&cb===b)||cs===b;
+      const cb=(c.barcode||'').replace(/[^a-z0-9]/gi,'').toLowerCase();
+      const cs=(c.sku||'').replace(/[^a-z0-9]/gi,'').toLowerCase();
+      return (cb && cb===barcode) || cs===barcode;
     });
     if(idx!==-1) return{pid,comboIdx:idx,combo:combos[idx]};
   }
